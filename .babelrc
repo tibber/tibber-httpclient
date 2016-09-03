@@ -1,0 +1,7 @@
+{
+  "presets": [
+    "node6"
+  ],
+  "plugins": ["syntax-async-functions","transform-async-to-generator"],
+  "ignore": ["node_modules/**/*", "lib/**/*"]
+}
