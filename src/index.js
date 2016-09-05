@@ -5,10 +5,10 @@ export class HttpClient {
     constructor(baseUrl, logger, basicAuthUser, basicAuthPwd) {
 
         if (!baseUrl)
-           throw new Error('baseUrl must be defined');
+            throw new Error('baseUrl must be defined');
 
         if (!logger)
-           throw new Error('logger must be defined');
+            throw new Error('logger must be defined');
 
         this._baseUrl = baseUrl;
         this._logger = logger;
@@ -23,17 +23,19 @@ export class HttpClient {
     async _request(method, path, body) {
 
         this._logger.info('Remote call');
-        this._logger.info(`${method} ${this._baseUrl}${path}`, body);
-        
-        try{
-        return await request.request({
-            method: method,
-            url: `${this._baseUrl}${path}`,
-            body: body,
-            headers: this._defaultHeaders 
-        });}
-        catch(error){
+        this._logger.info(`${method} ${this._baseUrl}${path}`, body ? `, body: ${body}` : "");
+
+        try {
+            return await request.request({
+                method: method,
+                url: `${this._baseUrl}${path}`,
+                body: body,
+                headers: this._defaultHeaders
+            });
+        }
+        catch (error) {
             this._logger.error(`Error while invoking ${this._baseUrl}${path}`, error.message)
+            throw error;
         }
     }
 
