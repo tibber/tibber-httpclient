@@ -1,5 +1,10 @@
 import request from 'request-promise-json';
 
+class DummyLogger {
+    info() { }
+    error() { }
+}
+
 export class HttpClient {
 
     constructor(baseUrl, logger, basicAuthUser, basicAuthPwd) {
@@ -7,11 +12,8 @@ export class HttpClient {
         if (!baseUrl)
             throw new Error('baseUrl must be defined');
 
-        if (!logger)
-            throw new Error('logger must be defined');
-
         this._baseUrl = baseUrl;
-        this._logger = logger;
+        this._logger = logger || new DummyLogger();
 
         if (basicAuthUser && basicAuthPwd) {
             this._defaultHeaders = {
@@ -23,7 +25,7 @@ export class HttpClient {
     async _request(method, path, body) {
 
         this._logger.info('Remote call');
-        this._logger.info(`${method} ${this._baseUrl}${path}`, body ? `, body: ${body}` : "");
+        this._logger.info(`${method} ${this._baseUrl}${path}`, body ? `, body: ${JSON.stringify(body)}` : "");
 
         try {
             return await request.request({
@@ -55,3 +57,35 @@ export class HttpClient {
         return await this._request('DELETE', route);
     }
 }
+
+export class TestHttpClient {
+
+    constructor(routePayloads) {
+        this._routePayloads = routePayloads;
+        this.calls = { get: {}, post: {}, patch: {}, delete: {} };
+    }
+
+    async get(route) {
+
+        this.calls.get[route] = {};
+        let result = this._routePayloads.get[route];
+
+        return this._routePayloads.get[route];
+    }
+
+    async post(route, payload) {
+        this.calls.post[route] = payload || {};
+        return this._routePayloads.post[route];
+    }
+
+    async patch(route, payload) {
+        this.calls.patch[route] = payload || {};
+        return this._routePayloads.patch[route];
+    }
+
+    async delete(route) {
+        this.calls.delte[route] = null;
+        return this._routePayloads.delete[route];
+    }
+}
+
