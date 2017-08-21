@@ -24,8 +24,7 @@ export class HttpClient {
 
     async _request(method, path, body) {
 
-        this._logger.info('Remote call');
-        this._logger.info(`${method} ${this._baseUrl}${path}`, body ? `, body: ${JSON.stringify(body)}` : "");
+        this._logger.info(`remote call ${method} ${this._baseUrl}${path}`, body ? `, body: ${JSON.stringify(body)}` : "");
 
         try {
             return await request.request({
@@ -36,7 +35,11 @@ export class HttpClient {
             });
         }
         catch (error) {
-            this._logger.error(`Error while invoking ${this._baseUrl}${path}`, error.message)
+            let message = error.message;
+            if (error.response && error.response.errors && error.response.errors.length > 0)
+                message = error.response.errors.join("\n");
+                
+            _this._logger.error(`error while invoking ${_this._baseUrl}${path}: ${message}`);
             throw error;
         }
     }
