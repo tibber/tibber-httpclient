@@ -1,8 +1,20 @@
-import request from 'request-promise-json';
+import request from 'request-promise';
+import moment from 'moment';
 
-class DummyLogger {
-    info() { }
-    error() { }
+class WrapperLogger {
+    constructor(logger){
+        this.logger = logger||{};
+    }
+    info() { 
+
+      this.logger.info && this.logger.info(...arguments);
+    }
+    error() { 
+        this.logger.error && this.logger.error(...arguments);
+    }
+    debug() { 
+        this.logger.debug && this.logger.debug(...arguments);
+    }
 }
 
 export class HttpClient {
@@ -13,7 +25,7 @@ export class HttpClient {
             throw new Error('baseUrl must be defined');
 
         this._baseUrl = baseUrl;
-        this._logger = logger || new DummyLogger();
+        this._logger = new WrapperLogger(logger);
 
         if (basicAuthUser && basicAuthPwd) {
             this._defaultHeaders = {
@@ -24,22 +36,36 @@ export class HttpClient {
 
     async _request(method, path, body) {
 
-        this._logger.info(`remote call ${method} ${this._baseUrl}${path}`, body ? `, body: ${JSON.stringify(body)}` : "");
-
+        const url = `${this._baseUrl}${path}`;
+        const start = moment();        
+        let sw = {};
+        const options = {
+            method: method,
+            uri: url,
+            body: body,
+            headers: this._defaultHeaders,
+            resolveWithFullResponse: true
+        };
         try {
-            return await request.request({
-                method: method,
-                url: `${this._baseUrl}${path}`,
-                body: body,
-                headers: this._defaultHeaders
-            });
+            const result = await request(options);
+            this._logger.info(`${method} ${url} ${result.statusCode} (${moment().diff(start,'milliseconds')} ms)`);
+            this._logger.debug('request-options', options);
+            
+            return result.body ? JSON.parse(result.body): undefined;            
         }
         catch (error) {
-            let message = error.message;
-            if (error.response && error.response.errors && error.response.errors.length > 0)
-                message = error.response.errors.join("\n");
-                
-            _this._logger.error(`error while invoking ${_this._baseUrl}${path}: ${message}`);
+         
+            let message = null;
+            if (error.response && error.response.errors && error.response.errors.length > 0) {
+                message = error.response.errors.join(",");
+            }
+            else {
+                message = error.toString && error.toString();
+            }
+            this._logger.error('--------------------------------------------------------------------\n'
+                                +`${method} ${url} ${error.response && error.response.statusCode || '<unknown statuscode>'} (${moment().diff(start,'milliseconds')} ms)\n`
+                                +`request-options: ${JSON.stringify(options)}\n`
+                                +`error:${message}\n`+'--------------------------------------------------------------------');
             throw error;
         }
     }
