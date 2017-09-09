@@ -8,6 +8,7 @@ pids
 *.pid
 *.seed
 localtest.js
+localtest.ts
 .DS_Store
 .vscode
 
