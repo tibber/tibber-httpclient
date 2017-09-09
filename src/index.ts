@@ -82,23 +82,23 @@ export class HttpClient {
         }
     }
 
-    public async get<T>(route): Promise<T> {
+    public async get<T>(route: string): Promise<T> {
         return await this._request("GET", route);
     }
 
-    public async post<T>(route, payload): Promise<T> {
+    public async post<T>(route: string, payload?: object): Promise<T> {
         return await this._request("POST", route, payload);
     }
 
-    public async patch<T>(route, payload): Promise<T> {
+    public async patch<T>(route: string, payload?: object): Promise<T> {
         return (await this._request("PATCH", route, payload));
     }
 
-    public async put<T>(route, payload): Promise<T> {
+    public async put<T>(route: string, payload: object): Promise<T> {
         return await this._request("PATCH", route, payload);
     }
 
-    public async delete(route) {
+    public async delete(route: string) {
         return await this._request("DELETE", route);
     }
 }
