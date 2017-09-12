@@ -8,8 +8,8 @@
     "2npm": "publish",
     "build": "yarn build-ts && yarn tslint",
     "build-ts": "tsc -d",
-    "tslint": "tslint -c tslint.json -p tsconfig.json",
-    "test": "tsc --lib es2017 ./localtest.ts; node ./localtest.js"
+    "tslint": "tslint -c tslint.json -p tsconfig.json"
+    
   },
   "author": "",
   "license": "ISC",
