@@ -56,14 +56,14 @@ export class HttpClient {
             uri: url,
             body: body,
             headers: this._defaultHeaders,
-            resolveWithFullResponse: true
+            resolveWithFullResponse: true,
+            json: true
         };
         try {
             const result = await request(options);
             this._logger.info(`${method} ${url} ${result.statusCode} (${moment().diff(start, "milliseconds")} ms)`);
             this._logger.debug("request-options", options);
-
-            return result.body ? JSON.parse(result.body) : undefined;
+            return result.body;
         }
         catch (error) {
 
