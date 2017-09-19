@@ -31,7 +31,7 @@ export class HttpClient {
     private _baseUrl: string;
     private _logger: Logger;
     private _defaultHeaders: any;
-    constructor(baseUrl: string, logger?: Logger, basicAuthUser?: string, basicAuthPwd?: string) {
+    constructor(baseUrl: string, logger?: Logger, basicAuthUser?: string, basicAuthPwd?: string, bearer?: string) {
 
         if (!baseUrl)
             throw new Error("baseUrl must be defined");
@@ -42,6 +42,11 @@ export class HttpClient {
         if (basicAuthUser && basicAuthPwd) {
             this._defaultHeaders = {
                 "Authorization": "Basic " + new Buffer(basicAuthUser + ":" + basicAuthPwd).toString("base64")
+            };
+        }
+        else if (bearer) {
+            this._defaultHeaders = {
+                "Authorization": "Bearer " + bearer
             };
         }
     }
