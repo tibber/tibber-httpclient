@@ -79,7 +79,8 @@ export class HttpClient {
             else {
                 message = error.toString && error.toString();
             }
-            this._logger.error("--------------------------------------------------------------------\n"
+            this._logger.error("\n"
+                + "--------------------------------------------------------------------\n"
                 + `${method} ${url} ${error.response && error.response.statusCode || "<unknown statuscode>"} (${moment().diff(start, "milliseconds")} ms)\n`
                 + `request-options: ${JSON.stringify(options)}\n`
                 + `error:${message}\n` + "--------------------------------------------------------------------");
