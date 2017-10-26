@@ -115,7 +115,7 @@ export class TestHttpClient {
 
     constructor(routePayloads) {
         this._routePayloads = routePayloads;
-        this.calls = { get: {}, post: {}, patch: {}, delete: {} };
+        this.calls = { get: {}, post: {}, patch: {}, put: {}, delete: {} };
     }
 
     public async get(route) {
