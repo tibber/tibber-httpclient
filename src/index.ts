@@ -130,6 +130,11 @@ export class TestHttpClient {
         return this._routePayloads.post[route];
     }
 
+    public async put(route, payload) {
+        this.calls.put[route] = payload || {};
+        return this._routePayloads.put[route];
+    }
+
     public async patch(route, payload) {
         this.calls.patch[route] = payload || {};
         return this._routePayloads.patch[route];
