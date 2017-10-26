@@ -2,15 +2,60 @@
 # yarn lockfile v1
 
 
+"@types/big.js@^4.0.0":
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/@types/big.js/-/big.js-4.0.0.tgz#4b332427b85c042246ef07d9b90adbba3c6d5274"
+
 "@types/bluebird@*":
   version "3.5.10"
   resolved "https://registry.yarnpkg.com/@types/bluebird/-/bluebird-3.5.10.tgz#c4b09b7ffa4b1b2baec2b03eca8618687099acb0"
+
+"@types/body-parser@^1.16.5":
+  version "1.16.5"
+  resolved "https://registry.yarnpkg.com/@types/body-parser/-/body-parser-1.16.5.tgz#d2b7daefab84e0afa9d3fae0935bc7355b6320af"
+  dependencies:
+    "@types/express" "*"
+    "@types/node" "*"
+
+"@types/compression@^0.0.34":
+  version "0.0.34"
+  resolved "https://registry.yarnpkg.com/@types/compression/-/compression-0.0.34.tgz#c7eb6bdd2b919099c9da62f2158934894af887f1"
+  dependencies:
+    "@types/express" "*"
+
+"@types/express-serve-static-core@*":
+  version "4.0.53"
+  resolved "https://registry.yarnpkg.com/@types/express-serve-static-core/-/express-serve-static-core-4.0.53.tgz#1723a35d1447f2c55e13c8721eab3448e42f4d82"
+  dependencies:
+    "@types/node" "*"
+
+"@types/express@*":
+  version "4.0.37"
+  resolved "https://registry.yarnpkg.com/@types/express/-/express-4.0.37.tgz#625ac3765169676e01897ca47011c26375784971"
+  dependencies:
+    "@types/express-serve-static-core" "*"
+    "@types/serve-static" "*"
 
 "@types/form-data@*":
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/@types/form-data/-/form-data-2.2.0.tgz#a98aac91dc99857b6af24caef7ca6df302f31565"
   dependencies:
     "@types/node" "*"
+
+"@types/knex@^0.0.63":
+  version "0.0.63"
+  resolved "https://registry.yarnpkg.com/@types/knex/-/knex-0.0.63.tgz#fc0ea951d9b8d516313745bac7abfa0bf21d5d4b"
+  dependencies:
+    "@types/bluebird" "*"
+    "@types/node" "*"
+
+"@types/lodash@^4.14.78":
+  version "4.14.78"
+  resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.78.tgz#f26a0b38a44a832c652964803c7e48be05939d3f"
+
+"@types/mime@*":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@types/mime/-/mime-2.0.0.tgz#5a7306e367c539b9f6543499de8dd519fac37a8b"
 
 "@types/moment@^2.13.0":
   version "2.13.0"
@@ -35,6 +80,13 @@
   dependencies:
     "@types/form-data" "*"
     "@types/node" "*"
+
+"@types/serve-static@*":
+  version "1.7.32"
+  resolved "https://registry.yarnpkg.com/@types/serve-static/-/serve-static-1.7.32.tgz#0f6732e4dab0813771dd8fc8fe14940f34728b4c"
+  dependencies:
+    "@types/express-serve-static-core" "*"
+    "@types/mime" "*"
 
 abbrev@1:
   version "1.1.0"

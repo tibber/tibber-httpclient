@@ -101,7 +101,7 @@ export class HttpClient {
     }
 
     public async put<T>(route: string, payload: object): Promise<T> {
-        return await this._request("PATCH", route, payload);
+        return await this._request("PUT", route, payload);
     }
 
     public async delete(route: string) {
