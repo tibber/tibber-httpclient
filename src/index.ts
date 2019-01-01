@@ -31,7 +31,7 @@ export class HttpClient {
     private _baseUrl: string;
     private _logger: Logger;
     private _defaultHeaders: any;
-    constructor(baseUrl: string, logger?: Logger, basicAuthUser?: string, basicAuthPwd?: string, bearer?: string) {
+    constructor(baseUrl: string, logger?: Logger, basicAuthUser?: string, basicAuthPwd?: string, bearer?: string, defaultHeaders?: object) {
 
         if (!baseUrl)
             throw new Error("baseUrl must be defined");
@@ -49,6 +49,7 @@ export class HttpClient {
                 "Authorization": "Bearer " + bearer
             };
         }
+        this._defaultHeaders = defaultHeaders ? Object.assign(this._defaultHeaders || {}, defaultHeaders) : this._defaultHeaders;
     }
 
     private async _request(method: HTTP_METHOD, path: string, body?: object) {
@@ -84,7 +85,9 @@ export class HttpClient {
                 + `${method} ${url} ${error.response && error.response.statusCode || "<unknown statuscode>"} (${moment().diff(start, "milliseconds")} ms)\n`
                 + `request-options: ${JSON.stringify(options)}\n`
                 + `error:${message}\n` + "--------------------------------------------------------------------");
-            throw error;
+            const { statusCode, error: exception } = error;
+
+            throw new RequestException(message, statusCode, exception && exception.err ? exception.err : exception);
         }
     }
 
@@ -106,6 +109,16 @@ export class HttpClient {
 
     public async delete(route: string) {
         return await this._request("DELETE", route);
+    }
+}
+
+export class RequestException extends Error {
+    public statusCode;
+    public innerError;
+    constructor(message, statusCode, inner) {
+        super(message);
+        this.statusCode = statusCode;
+        this.innerError = inner;
     }
 }
 
