@@ -7,6 +7,20 @@ export interface Logger {
     debug?(...any);
 }
 
+export interface Cache {
+    get<T>(key: string): T;
+    set<T>(key: string, payload: T): void;
+}
+
+export interface IHttpClient {
+
+    get<T>(route: string): Promise<T>;
+    post<T>(route: string, payload?: object): Promise<T>;
+    patch<T>(route: string, payload?: object): Promise<T>;
+    put<T>(route: string, payload: object): Promise<T>;
+    delete(route: string);
+}
+
 class WrapperLogger {
     private logger: Logger;
     constructor(logger?: Logger) {
@@ -26,7 +40,7 @@ class WrapperLogger {
 
 type HTTP_METHOD = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
-export class HttpClient {
+export class HttpClient implements IHttpClient {
 
     private _baseUrl: string;
     private _logger: Logger;
@@ -122,7 +136,7 @@ export class RequestException extends Error {
     }
 }
 
-export class TestHttpClient {
+export class TestHttpClient implements IHttpClient {
     public _routePayloads: any;
     public calls: any;
 
@@ -156,6 +170,47 @@ export class TestHttpClient {
     public async delete(route) {
         this.calls.delete[route] = undefined;
         return this._routePayloads.delete[route];
+    }
+}
+
+export class CachedClient implements IHttpClient {
+    private _httpClient: IHttpClient;
+    private _logger: Logger;
+    private _cache: Cache;
+    private _useCacheIsDefault: boolean;
+
+    constructor(httpClient: HttpClient, logger: Logger, cache: Cache) {
+        this._httpClient = httpClient;
+        this._logger = logger;
+        this._cache = cache;
+    }
+
+    public async get<T>(route: string): Promise<T> {
+
+        const cached = this._cache.get<T>(route);
+        if (cached) {
+            this._logger && this._logger.info(`returning cached result for route "${route}"`);
+            return cached;
+        }
+        const result = await this._httpClient.get<T>(route);
+        this._cache.set(route, result);
+        return result;
+    }
+
+    public async post<T>(route: string, payload?: object): Promise<T> {
+        return await this._httpClient.post(route, payload);
+    }
+
+    public async put<T>(route: string, payload?: object): Promise<T> {
+        return await this._httpClient.put(route, payload);
+    }
+
+    public async patch<T>(route: string, payload?: object): Promise<T> {
+        return await this._httpClient.patch(route, payload);
+    }
+
+    public async delete(route: string): Promise<void> {
+        return await this._httpClient.delete(route);
     }
 }
 
