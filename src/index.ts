@@ -177,8 +177,6 @@ export class CachedClient implements IHttpClient {
     private _httpClient: IHttpClient;
     private _logger: Logger;
     private _cache: Cache;
-    private _useCacheIsDefault: boolean;
-
     constructor(httpClient: HttpClient, logger: Logger, cache: Cache) {
         this._httpClient = httpClient;
         this._logger = logger;
@@ -198,15 +196,15 @@ export class CachedClient implements IHttpClient {
     }
 
     public async post<T>(route: string, payload?: object): Promise<T> {
-        return await this._httpClient.post(route, payload);
+        return await this._httpClient.post<T>(route, payload);
     }
 
     public async put<T>(route: string, payload?: object): Promise<T> {
-        return await this._httpClient.put(route, payload);
+        return await this._httpClient.put<T>(route, payload);
     }
 
     public async patch<T>(route: string, payload?: object): Promise<T> {
-        return await this._httpClient.patch(route, payload);
+        return await this._httpClient.patch<T>(route, payload);
     }
 
     public async delete(route: string): Promise<void> {
