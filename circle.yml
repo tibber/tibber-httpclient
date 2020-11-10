@@ -1,10 +1,24 @@
-machine:
-  node:
-    version: 6.2.0
-deployment:
-  npm:
-    branch: master
-    commands:
-      - npm run build
-      - echo -e "$NPM_USERNAME\n$NPM_PASSWORD\n$NPM_EMAIL" | npm login
-      - npm run 2npm
+version: 2.1
+workflows:
+  build_and_deploy:
+    jobs:
+      - build:
+          context:
+            - NPM
+jobs:
+  build:
+    working_directory: ~/package
+    docker:
+      - image: circleci/node:10
+    steps:
+      - checkout
+      - run:
+          name: Build Package
+          command: |
+            yarn
+            yarn build
+      - run:
+          name: Deploy Package
+          command: |
+            echo "//registry.npmjs.org/:_authToken=$NPM_AUTH_TOKEN" > ~/.npmrc
+            npm publish
