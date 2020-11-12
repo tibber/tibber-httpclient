@@ -21,6 +21,10 @@ export interface IHttpClient {
     delete(route: string);
 }
 
+export interface ICachedHttpClient extends IHttpClient {
+    getNoCache<T>(route: string): Promise<T>;
+}
+
 class WrapperLogger {
     private logger: Logger;
     constructor(logger?: Logger) {
@@ -173,7 +177,7 @@ export class TestHttpClient implements IHttpClient {
     }
 }
 
-export class CachedClient implements IHttpClient {
+export class CachedClient implements ICachedHttpClient {
     private _httpClient: IHttpClient;
     private _logger: Logger;
     private _cache: Cache;
@@ -183,17 +187,22 @@ export class CachedClient implements IHttpClient {
         this._cache = cache;
     }
 
-    public async get<T>(route: string): Promise<T> {
+    async _get<T>(route: string, noCache: boolean): Promise<T> {
 
-        const cached = this._cache.get<T>(route);
-        if (cached) {
-            this._logger && this._logger.info(`returning cached result for route "${route}"`);
-            return cached;
+        if (!noCache) {
+            const cached = this._cache.get<T>(route);
+            if (cached) {
+                this._logger && this._logger.info(`returning cached result for route "${route}"`);
+                return cached;
+            }
         }
         const result = await this._httpClient.get<T>(route);
         this._cache.set(route, result);
         return result;
     }
+
+    public async get<T>(route: string): Promise<T> { return this._get(route, false); }
+    public async getNoCache<T>(route: string): Promise<T> { return this._get(route, true); }
 
     public async post<T>(route: string, payload?: object): Promise<T> {
         return await this._httpClient.post<T>(route, payload);
