@@ -187,7 +187,7 @@ export class CachedClient implements ICachedHttpClient {
         this._cache = cache;
     }
 
-    async _get<T>(route: string, noCache: boolean): Promise<T> {
+    private async _get<T>(route: string, noCache: boolean): Promise<T> {
 
         if (!noCache) {
             const cached = this._cache.get<T>(route);
