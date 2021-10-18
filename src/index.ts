@@ -13,121 +13,122 @@ export interface Cache {
 }
 
 export interface IHttpClient {
-
-    get<T>(route: string): Promise<T>;
-    post<T>(route: string, payload?: object): Promise<T>;
-    patch<T>(route: string, payload?: object): Promise<T>;
-    put<T>(route: string, payload: object): Promise<T>;
-    delete(route: string);
+  get<T>(route: string, timeout?: number): Promise<T>;
+  post<T>(route: string, payload?: object, timeout?: number): Promise<T>;
+  patch<T>(route: string, payload?: object, timeout?: number): Promise<T>;
+  put<T>(route: string, payload: object, timeout?: number): Promise<T>;
+  delete(route: string, timeout?: number);
 }
 
 export interface ICachedHttpClient extends IHttpClient {
-    getNoCache<T>(route: string): Promise<T>;
+  getNoCache<T>(route: string): Promise<T>;
 }
 
 class WrapperLogger {
-    private logger: Logger;
-    constructor(logger?: Logger) {
-        this.logger = logger || {};
-    }
-    public info() {
+  private logger: Logger;
+  constructor(logger?: Logger) {
+    this.logger = logger || {};
+  }
+  public info() {
 
-        this.logger.info && this.logger.info.apply(this.logger, arguments);
-    }
-    public error() {
-        this.logger.error && this.logger.error.apply(this.logger, arguments);
-    }
-    public debug() {
-        this.logger.debug && this.logger.debug.apply(this.logger, arguments);
-    }
+    this.logger.info && this.logger.info.apply(this.logger, arguments);
+  }
+  public error() {
+    this.logger.error && this.logger.error.apply(this.logger, arguments);
+  }
+  public debug() {
+    this.logger.debug && this.logger.debug.apply(this.logger, arguments);
+  }
 }
 
 type HTTP_METHOD = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export class HttpClient implements IHttpClient {
 
-    private _baseUrl: string;
-    private _logger: Logger;
-    private _defaultHeaders: any;
-    constructor(baseUrl: string, logger?: Logger, basicAuthUser?: string, basicAuthPwd?: string, bearer?: string, defaultHeaders?: object) {
+  private _baseUrl: string;
+  private _logger: Logger;
+  private _defaultHeaders: any;
+  constructor(baseUrl: string, logger?: Logger, basicAuthUser?: string, basicAuthPwd?: string, bearer?: string, defaultHeaders?: object) {
 
-        if (!baseUrl)
-            throw new Error("baseUrl must be defined");
+    if (!baseUrl)
+        throw new Error("baseUrl must be defined");
 
-        this._baseUrl = baseUrl;
-        this._logger = new WrapperLogger(logger);
+    this._baseUrl = baseUrl;
+    this._logger = new WrapperLogger(logger);
 
-        if (basicAuthUser && basicAuthPwd) {
-            this._defaultHeaders = {
-                "Authorization": "Basic " + new Buffer(basicAuthUser + ":" + basicAuthPwd).toString("base64")
-            };
-        }
-        else if (bearer) {
-            this._defaultHeaders = {
-                "Authorization": "Bearer " + bearer
-            };
-        }
-        this._defaultHeaders = defaultHeaders ? Object.assign(this._defaultHeaders || {}, defaultHeaders) : this._defaultHeaders;
-    }
-
-    private async _request(method: HTTP_METHOD, path: string, body?: object) {
-
-        const url = `${this._baseUrl}${path}`;
-        const start = moment();
-
-        const options = {
-            method: method,
-            uri: url,
-            body: body,
-            headers: this._defaultHeaders,
-            resolveWithFullResponse: true,
-            json: true
+    if (basicAuthUser && basicAuthPwd) {
+      this._defaultHeaders = {
+          "Authorization": "Basic " + new Buffer(basicAuthUser + ":" + basicAuthPwd).toString("base64")
         };
-        try {
-            const result = await request(options);
-            this._logger.info(`${method} ${url} ${result.statusCode} (${moment().diff(start, "milliseconds")} ms)`);
-            this._logger.debug("request-options", options);
-            return result.body;
-        }
-        catch (error) {
-
-            let message = "";
-            if (error.response && error.response.errors && error.response.errors.length > 0) {
-                message = error.response.errors.join(",");
-            }
-            else {
-                message = error.toString && error.toString();
-            }
-            this._logger.error("\n"
-                + "--------------------------------------------------------------------\n"
-                + `${method} ${url} ${error.response && error.response.statusCode || "<unknown statuscode>"} (${moment().diff(start, "milliseconds")} ms)\n`
-                + `request-options: ${JSON.stringify(options)}\n`
-                + `error:${message}\n` + "--------------------------------------------------------------------");
-            const { statusCode, error: exception } = error;
-
-            throw new RequestException(message, statusCode, exception && exception.err ? exception.err : exception);
-        }
     }
-
-    public async get<T>(route: string): Promise<T> {
-        return await this._request("GET", route);
+    else if (bearer) {
+      this._defaultHeaders = {
+        "Authorization": "Bearer " + bearer
+      };
     }
+    this._defaultHeaders = defaultHeaders
+      ? Object.assign(this._defaultHeaders || {}, defaultHeaders)
+      : this._defaultHeaders;
+  }
 
-    public async post<T>(route: string, payload?: object): Promise<T> {
-        return await this._request("POST", route, payload);
-    }
+  private async _request(method: HTTP_METHOD, path: string, body?: object, timeout?: number) {
+    const url = `${this._baseUrl}${path}`;
+    const start = moment();
 
-    public async patch<T>(route: string, payload?: object): Promise<T> {
-        return (await this._request("PATCH", route, payload));
+    const options = {
+      method: method,
+      uri: url,
+      body: body,
+      headers: this._defaultHeaders,
+      resolveWithFullResponse: true,
+      json: true,
+      timeout: timeout
+    };
+    try {
+      const result = await request(options);
+      this._logger.info(`${method} ${url} ${result.statusCode} (${moment().diff(start, "milliseconds")} ms)`);
+      this._logger.debug("request-options", options);
+      return result.body;
     }
+    catch (error) {
 
-    public async put<T>(route: string, payload: object): Promise<T> {
-        return await this._request("PUT", route, payload);
-    }
+      let message = "";
+      if (error.response && error.response.errors && error.response.errors.length > 0) {
+        message = error.response.errors.join(",");
+      }
+      else {
+        message = error.toString && error.toString();
+      }
+      this._logger.error("\n"
+      + "--------------------------------------------------------------------\n"
+      + `${method} ${url} ${error.response && error.response.statusCode || "<unknown statuscode>"} (${moment().diff(start, "milliseconds")} ms)\n`
+      + `request-options: ${JSON.stringify(options)}\n`
+      + `error:${message}\n` + "--------------------------------------------------------------------");
+      const { statusCode, error: exception } = error;
 
-    public async delete(route: string) {
-        return await this._request("DELETE", route);
+      throw new RequestException(message, statusCode, exception && exception.err ? exception.err : exception);
     }
+  }
+
+  public async get<T>(route: string, timeout: number): Promise<T> {
+    return await this._request("GET", route, undefined, timeout);
+  }
+
+  public async post<T>(route: string, payload?: object, timeout?: number): Promise<T> {
+    return await this._request("POST", route, payload, timeout);
+  }
+
+  public async patch<T>(route: string, payload?: object, timeout?: number): Promise<T> {
+    return await this._request("PATCH", route, payload);
+  }
+
+  public async put<T>(route: string, payload: object, timeout?: number): Promise<T> {
+    return await this._request("PUT", route, payload, timeout);
+  }
+
+  public async delete(route: string, timeout?: number) {
+    return await this._request("DELETE", route, undefined, timeout);
+  }
 }
 
 export class RequestException extends Error {
