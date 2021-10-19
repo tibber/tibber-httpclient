@@ -14,11 +14,11 @@ export interface Cache {
 
 export interface IHttpClient {
 
-    get<T>(route: string): Promise<T>;
-    post<T>(route: string, payload?: object): Promise<T>;
-    patch<T>(route: string, payload?: object): Promise<T>;
-    put<T>(route: string, payload: object): Promise<T>;
-    delete(route: string);
+    get<T>(route: string, timeout?: number): Promise<T>;
+    post<T>(route: string, payload?: object, timeout?: number): Promise<T>;
+    patch<T>(route: string, payload?: object, timeout?: number): Promise<T>;
+    put<T>(route: string, payload: object, timeout?: number): Promise<T>;
+    delete(route: string, timeout?: number);
 }
 
 export interface ICachedHttpClient extends IHttpClient {
@@ -70,7 +70,7 @@ export class HttpClient implements IHttpClient {
         this._defaultHeaders = defaultHeaders ? Object.assign(this._defaultHeaders || {}, defaultHeaders) : this._defaultHeaders;
     }
 
-    private async _request(method: HTTP_METHOD, path: string, body?: object) {
+    private async _request(method: HTTP_METHOD, path: string, body?: object, timeout?: number) {
 
         const url = `${this._baseUrl}${path}`;
         const start = moment();
@@ -81,7 +81,8 @@ export class HttpClient implements IHttpClient {
             body: body,
             headers: this._defaultHeaders,
             resolveWithFullResponse: true,
-            json: true
+            json: true,
+            timeout
         };
         try {
             const result = await request(options);
@@ -109,24 +110,24 @@ export class HttpClient implements IHttpClient {
         }
     }
 
-    public async get<T>(route: string): Promise<T> {
-        return await this._request("GET", route);
+    public async get<T>(route: string, timeout?: number): Promise<T> {
+        return await this._request("GET", route, undefined, timeout);
     }
 
-    public async post<T>(route: string, payload?: object): Promise<T> {
-        return await this._request("POST", route, payload);
+    public async post<T>(route: string, payload?: object, timeout?: number): Promise<T> {
+        return await this._request("POST", route, payload, timeout);
     }
 
-    public async patch<T>(route: string, payload?: object): Promise<T> {
-        return (await this._request("PATCH", route, payload));
+    public async patch<T>(route: string, payload?: object, timeout?: number): Promise<T> {
+        return (await this._request("PATCH", route, payload, timeout));
     }
 
-    public async put<T>(route: string, payload: object): Promise<T> {
-        return await this._request("PUT", route, payload);
+    public async put<T>(route: string, payload: object, timeout?: number): Promise<T> {
+        return await this._request("PUT", route, payload, timeout);
     }
 
-    public async delete(route: string) {
-        return await this._request("DELETE", route);
+    public async delete(route: string, timeout?: number) {
+        return await this._request("DELETE", route, undefined, timeout);
     }
 }
 
