@@ -36,6 +36,9 @@ node_modules
 # Optional REPL history
 .node_repl_history
 
+# JetBrains IDEs
+/.idea/
+
 dist
 bower_components
 config.json

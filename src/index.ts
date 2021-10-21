@@ -1,5 +1,6 @@
 import * as request from "request-promise";
 import * as moment from "moment";
+import type { CoreOptions } from "request";
 
 export interface Logger {
     info?(...any);
@@ -12,13 +13,15 @@ export interface Cache {
     set<T>(key: string, payload: T): void;
 }
 
+export type ClientOptions = Pick<CoreOptions, "timeout" | "gzip">;
+
 export interface IHttpClient {
 
-    get<T>(route: string, timeout?: number): Promise<T>;
-    post<T>(route: string, payload?: object, timeout?: number): Promise<T>;
-    patch<T>(route: string, payload?: object, timeout?: number): Promise<T>;
-    put<T>(route: string, payload: object, timeout?: number): Promise<T>;
-    delete(route: string, timeout?: number);
+    get<T>(route: string, options?: ClientOptions): Promise<T>;
+    post<T>(route: string, payload?: object, options?: ClientOptions): Promise<T>;
+    patch<T>(route: string, payload?: object, options?: ClientOptions): Promise<T>;
+    put<T>(route: string, payload: object, options?: ClientOptions): Promise<T>;
+    delete(route: string, options?: ClientOptions);
 }
 
 export interface ICachedHttpClient extends IHttpClient {
@@ -70,7 +73,7 @@ export class HttpClient implements IHttpClient {
         this._defaultHeaders = defaultHeaders ? Object.assign(this._defaultHeaders || {}, defaultHeaders) : this._defaultHeaders;
     }
 
-    private async _request(method: HTTP_METHOD, path: string, body?: object, timeout?: number) {
+    private async _request(method: HTTP_METHOD, path: string, body?: object, clientOptions: ClientOptions = {}) {
 
         const url = `${this._baseUrl}${path}`;
         const start = moment();
@@ -82,7 +85,7 @@ export class HttpClient implements IHttpClient {
             headers: this._defaultHeaders,
             resolveWithFullResponse: true,
             json: true,
-            timeout
+            ...clientOptions,
         };
         try {
             const result = await request(options);
@@ -91,8 +94,7 @@ export class HttpClient implements IHttpClient {
             return result.body;
         }
         catch (error) {
-
-            let message = "";
+            let message;
             if (error.response && error.response.errors && error.response.errors.length > 0) {
                 message = error.response.errors.join(",");
             }
@@ -110,24 +112,24 @@ export class HttpClient implements IHttpClient {
         }
     }
 
-    public async get<T>(route: string, timeout?: number): Promise<T> {
-        return await this._request("GET", route, undefined, timeout);
+    public async get<T>(route: string, options?: ClientOptions): Promise<T> {
+        return await this._request("GET", route, undefined, options);
     }
 
-    public async post<T>(route: string, payload?: object, timeout?: number): Promise<T> {
-        return await this._request("POST", route, payload, timeout);
+    public async post<T>(route: string, payload?: object, options?: ClientOptions): Promise<T> {
+        return await this._request("POST", route, payload, options);
     }
 
-    public async patch<T>(route: string, payload?: object, timeout?: number): Promise<T> {
-        return (await this._request("PATCH", route, payload, timeout));
+    public async patch<T>(route: string, payload?: object, options?: ClientOptions): Promise<T> {
+        return (await this._request("PATCH", route, payload, options));
     }
 
-    public async put<T>(route: string, payload: object, timeout?: number): Promise<T> {
-        return await this._request("PUT", route, payload, timeout);
+    public async put<T>(route: string, payload: object, options?: ClientOptions): Promise<T> {
+        return await this._request("PUT", route, payload, options);
     }
 
-    public async delete(route: string, timeout?: number) {
-        return await this._request("DELETE", route, undefined, timeout);
+    public async delete(route: string, options?: ClientOptions) {
+        return await this._request("DELETE", route, undefined, options);
     }
 }
 
