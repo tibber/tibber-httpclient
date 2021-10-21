@@ -13,15 +13,15 @@ export interface Cache {
     set<T>(key: string, payload: T): void;
 }
 
-export type ClientOptions = Pick<CoreOptions, "timeout" | "gzip">;
+export type RequestOptions = Pick<CoreOptions, "timeout" | "gzip">;
 
 export interface IHttpClient {
 
-    get<T>(route: string, options?: ClientOptions): Promise<T>;
-    post<T>(route: string, payload?: object, options?: ClientOptions): Promise<T>;
-    patch<T>(route: string, payload?: object, options?: ClientOptions): Promise<T>;
-    put<T>(route: string, payload: object, options?: ClientOptions): Promise<T>;
-    delete(route: string, options?: ClientOptions);
+    get<T>(route: string, options?: RequestOptions): Promise<T>;
+    post<T>(route: string, payload?: object, options?: RequestOptions): Promise<T>;
+    patch<T>(route: string, payload?: object, options?: RequestOptions): Promise<T>;
+    put<T>(route: string, payload: object, options?: RequestOptions): Promise<T>;
+    delete(route: string, options?: RequestOptions);
 }
 
 export interface ICachedHttpClient extends IHttpClient {
@@ -73,7 +73,7 @@ export class HttpClient implements IHttpClient {
         this._defaultHeaders = defaultHeaders ? Object.assign(this._defaultHeaders || {}, defaultHeaders) : this._defaultHeaders;
     }
 
-    private async _request(method: HTTP_METHOD, path: string, body?: object, clientOptions: ClientOptions = {}) {
+    private async _request(method: HTTP_METHOD, path: string, body?: object, requestOptions: RequestOptions = {}) {
 
         const url = `${this._baseUrl}${path}`;
         const start = moment();
@@ -85,7 +85,7 @@ export class HttpClient implements IHttpClient {
             headers: this._defaultHeaders,
             resolveWithFullResponse: true,
             json: true,
-            ...clientOptions,
+            ...requestOptions,
         };
         try {
             const result = await request(options);
@@ -112,23 +112,23 @@ export class HttpClient implements IHttpClient {
         }
     }
 
-    public async get<T>(route: string, options?: ClientOptions): Promise<T> {
+    public async get<T>(route: string, options?: RequestOptions): Promise<T> {
         return await this._request("GET", route, undefined, options);
     }
 
-    public async post<T>(route: string, payload?: object, options?: ClientOptions): Promise<T> {
+    public async post<T>(route: string, payload?: object, options?: RequestOptions): Promise<T> {
         return await this._request("POST", route, payload, options);
     }
 
-    public async patch<T>(route: string, payload?: object, options?: ClientOptions): Promise<T> {
+    public async patch<T>(route: string, payload?: object, options?: RequestOptions): Promise<T> {
         return (await this._request("PATCH", route, payload, options));
     }
 
-    public async put<T>(route: string, payload: object, options?: ClientOptions): Promise<T> {
+    public async put<T>(route: string, payload: object, options?: RequestOptions): Promise<T> {
         return await this._request("PUT", route, payload, options);
     }
 
-    public async delete(route: string, options?: ClientOptions) {
+    public async delete(route: string, options?: RequestOptions) {
         return await this._request("DELETE", route, undefined, options);
     }
 }
