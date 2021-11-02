@@ -54,7 +54,7 @@ export class RequestException extends Error {
  */
 export class HttpClient implements IHttpClient {
   got: Got;
-  logger: Logger;
+  logger: Logger | undefined;
   prefixUrl: string;
 
   constructor({
@@ -130,7 +130,7 @@ export class HttpClient implements IHttpClient {
     }
   }
 
-  #logAndThrowError({ error, path, options }: { error: Error; path: string; options: Options }) {
+  #logAndThrowError({ error, path, options }: { error: unknown; path: string; options: Options }) {
     let code;
     if (error instanceof HTTPError || error instanceof CancelError) {
       const { context, headers, method } = error.options;
@@ -149,12 +149,16 @@ export class HttpClient implements IHttpClient {
           '--------------------------------------------------------------------'
       );
     }
-    return new RequestException({
-      message: error.message,
-      statusCode: code,
-      innerError: error,
-      stack: error?.stack
-    });
+    if (error instanceof Error) {
+      return new RequestException({
+        message: error.message,
+        statusCode: code,
+        innerError: error,
+        stack: error?.stack
+      });
+    }
+
+    return error;
   }
 
   async get<T>(path: string, options?: RequestOptions): Promise<T> {

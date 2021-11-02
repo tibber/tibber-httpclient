@@ -1,6 +1,7 @@
-import test from "ava";
+import test from 'ava';
 import { HttpClient, RequestException } from '../src/index';
 import { AbortController } from 'abort-controller';
+import { HTTPError } from 'got/dist/source';
 
 interface Todo {
   id?: number;
@@ -49,14 +50,15 @@ test('Canceling request with AbortSignal', async (t) => {
   setTimeout(() => {
     controller.abort();
   }, 10);
-  t.plan(2);
+  t.plan(1);
   try {
     await client.get('anything', {
       abortSignal: signal
     });
   } catch (error) {
-    t.true(error instanceof RequestException);
-    t.is(error.inner.name, 'CancelError');
+    if (error instanceof RequestException) {
+      t.is(error.inner.name, 'CancelError');
+    }
   }
 });
 
@@ -65,13 +67,14 @@ test('Error request', async (t) => {
     prefixUrl: 'https://httpbin.org',
     logger: console
   });
-  t.plan(3);
+  t.plan(2);
   try {
     await client.get('status/400');
   } catch (error) {
-    t.true(error instanceof RequestException);
-    t.is(error.inner.name, 'HTTPError');
-    t.is(error.code, 400);
+    if (error instanceof RequestException) {
+      t.is(error.inner.name, 'HTTPError');
+      t.is(error.code, 400);
+    }
   }
 });
 
@@ -86,8 +89,10 @@ test('Create basic auth header', async (t) => {
     // trigger error, to get access to underlying request and check header
     await client.get('status/400', { headers: { nonHeader: 'abc' } });
   } catch (error) {
-    t.is(error.inner.options.headers.authorization, 'Basic bXluYW1lOjEyMzQ=');
-    t.is(error.inner.options.headers.nonheader, 'abc');
-    t.is(error.inner.options.headers.test, '123');
+    if (error instanceof RequestException && error.inner instanceof HTTPError) {
+      t.is(error.inner.options.headers.authorization, 'Basic bXluYW1lOjEyMzQ=');
+      t.is(error.inner.options.headers.nonheader, 'abc');
+      t.is(error.inner.options.headers.test, '123');
+    }
   }
 });
