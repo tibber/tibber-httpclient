@@ -34,20 +34,5 @@
   "eslint": "^8.1.0",
   "got": "^11.8.2",
   "tibber-httpclient-got": "file:./../tibber-httpclient-got"
- },
- "ava": {
-  "files": [
-   "./test/*"
-  ],
-  "nonSemVerExperiments": {
-   "nextGenConfig": true,
-   "configurableModuleFormat": true
-  },
-  "extensions": {
-   "ts": "module"
-  },
-  "nodeArguments": [
-   "--loader=ts-node/esm"
-  ]
  }
 }
