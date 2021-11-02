@@ -53,9 +53,9 @@ export class RequestException extends Error {
  * HttpClient to make network requests
  */
 export class HttpClient implements IHttpClient {
-  _got: Got;
-  private _logger: Logger;
-  private _prefixUrl: string;
+  got: Got;
+  logger: Logger;
+  prefixUrl: string;
 
   constructor({
     prefixUrl,
@@ -94,17 +94,17 @@ export class HttpClient implements IHttpClient {
 
     // initialize logger
     if (logger) {
-      this._logger = logger;
+      this.logger = logger;
     }
 
     // save prefixUrl
-    this._prefixUrl = prefixUrl;
+    this.prefixUrl = prefixUrl;
 
     // initialize got and extend it with default options
-    this._got = got.extend(gotOptions);
+    this.got = got.extend(gotOptions);
   }
 
-  private _request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
+  _request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
     const { abortSignal, ...gotOptions } = options || {};
     const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
     const responsePromise = this.got(sanitizedPath, { ...gotOptions });
@@ -118,26 +118,26 @@ export class HttpClient implements IHttpClient {
     return responsePromise;
   }
 
-  private async _requestJson<T>({ path, options }: { path: string; options: RequestOptions }): Promise<T> {
+  async _requestJson<T>({ path, options }: { path: string; options: RequestOptions }): Promise<T> {
     try {
       const responsePromise = this._request(path, options);
       const [response, json] = await Promise.all([responsePromise, responsePromise.json<T>()]);
 
-      this._logger?.info(
+      this.logger?.info(
         `${options.method} ${response.url} ${response.statusCode} ${new Date().getTime() - response.timings.start} ms`
       );
-      this._logger?.debug('request-options', JSON.stringify(options).replace(/\\n/g, ''));
+      this.logger?.debug('request-options', JSON.stringify(options).replace(/\\n/g, ''));
       return json;
     } catch (error) {
       const { context, headers, method } = error.options;
       const duration = (error.timings?.error || error.timings.end) - error.timings?.start;
       const code = error.response?.statusCode || error.code;
 
-      if (this._logger && (error instanceof HTTPError || error instanceof CancelError)) {
-        this._logger.error(
+      if (this.logger && (error instanceof HTTPError || error instanceof CancelError)) {
+        this.logger.error(
           '\n' +
             '--------------------------------------------------------------------\n' +
-            `${method} ${this._prefixUrl}${path} ${code || 'unkown statusCode'} (${duration ? duration : ' - '} ms)\n` +
+            `${method} ${this.prefixUrl}${path} ${code || 'unkown statusCode'} (${duration ? duration : ' - '} ms)\n` +
             `headers: ${JSON.stringify(headers)}\n` +
             `request-options: ${JSON.stringify({ ...options, context }).replace(/\\n/g, '')}\n` +
             `error:${error.message}\n` +
@@ -179,9 +179,5 @@ export class HttpClient implements IHttpClient {
       options: { ...options, method: 'DELETE', json: payload }
     });
     return void 0;
-  }
-
-  get got(): Got {
-    return this._got;
   }
 }
