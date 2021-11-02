@@ -92,7 +92,7 @@ export class HttpClient implements IHttpClient {
       addToHeader({ Authorization: 'Bearer ' + config.bearerToken });
     }
 
-    // ininitialize logger
+    // initialize logger
     if (logger) {
       this._logger = logger;
     }
