@@ -78,12 +78,16 @@ test('Error request', async (t) => {
 test('Create basic auth header', async (t) => {
   const client = new HttpClient({
     prefixUrl: 'https://httpbin.org',
-    config: { basicAuthPassword: '1234', basicAuthUserName: 'myname' }
+    config: { basicAuthPassword: '1234', basicAuthUserName: 'myname' },
+    options: { headers: { test: '123' } }
   });
+  t.plan(3);
   try {
     // trigger error, to get access to underlying request and check header
-    await client.get('status/400');
+    await client.get('status/400', { headers: { nonHeader: 'abc' } });
   } catch (error) {
     t.is(error.inner.options.headers.authorization, 'Basic bXluYW1lOjEyMzQ=');
+    t.is(error.inner.options.headers.nonheader, 'abc');
+    t.is(error.inner.options.headers.test, '123');
   }
 });
