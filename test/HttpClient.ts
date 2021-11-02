@@ -63,7 +63,7 @@ test('Canceling request with AbortSignal', async (t) => {
 test('Error request', async (t) => {
   const client = new HttpClient({
     prefixUrl: 'https://httpbin.org',
-    context: { basicAuthPassword: '1234', basicAuthUserName: 'myname' }
+    config: { basicAuthPassword: '1234', basicAuthUserName: 'myname' }
   });
   t.plan(3);
   try {
