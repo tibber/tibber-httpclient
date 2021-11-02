@@ -53,7 +53,7 @@ export class RequestException extends Error {
  * HttpClient to make network requests
  */
 export class HttpClient implements IHttpClient {
-  private _got: Got;
+  _got: Got;
   private _logger: Logger;
   private _prefixUrl: string;
 
