@@ -5,7 +5,7 @@
  "author": "Tibber",
  "license": "MIT",
  "scripts": {
-    "lint": "eslint src/ --ext .js,.ts,.json",
+    "lint": "eslint . --ext .js,.ts,.json",
     "test": "yarn ava --verbose",
     "type-check": "tsc --noEmit",
     "type-check:watch": "yarn type-check -- --watch",
