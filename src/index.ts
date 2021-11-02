@@ -38,7 +38,7 @@ export class RequestException extends Error {
     stack
   }: {
     message: string;
-    statusCode: string | number;
+    statusCode?: string | number;
     innerError: Error;
     stack?: string;
   }) {
@@ -132,13 +132,13 @@ export class HttpClient implements IHttpClient {
 
   #logAndThrowError({ error, path, options }: { error: Error; path: string; options: Options }) {
     let code;
-    if (this.logger && (error instanceof HTTPError || error instanceof CancelError)) {
+    if (error instanceof HTTPError || error instanceof CancelError) {
       const { context, headers, method } = error.options;
       const { start, end, error: err } = error?.timings ?? {};
       const duration = err && end && start && (err ?? end) - start;
-      code = error?.response.statusCode ?? error.code;
+      code = error.response?.statusCode ?? error.code;
 
-      this.logger.error(
+      this.logger?.error(
         '\n' +
           '--------------------------------------------------------------------\n' +
           `${method} ${this.prefixUrl}${path} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
@@ -151,7 +151,7 @@ export class HttpClient implements IHttpClient {
     }
     return new RequestException({
       message: error.message,
-      statusCode: code ?? 'unknown code',
+      statusCode: code,
       innerError: error,
       stack: error?.stack
     });
