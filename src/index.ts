@@ -105,48 +105,56 @@ export class HttpClient implements IHttpClient {
   }
 
   #request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
-    const { abortSignal, ...gotOptions } = options || {};
+    const { abortSignal, ...gotOptions } = options ?? {};
     const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
     const responsePromise = this.got(sanitizedPath, { ...gotOptions });
 
-    if (abortSignal) {
-      abortSignal &&
-        abortSignal.addEventListener('abort', () => {
-          responsePromise.cancel();
-        });
-    }
+    abortSignal &&
+      abortSignal.addEventListener('abort', () => {
+        responsePromise.cancel();
+      });
+
     return responsePromise;
   }
 
   async #requestJson<T>({ path, options }: { path: string; options: RequestOptions }): Promise<T> {
     try {
       const responsePromise = this.#request(path, options);
-      const [response, json] = await Promise.all([responsePromise, responsePromise.json<T>()]);
+      const [{ url, statusCode, timings }, json] = await Promise.all([responsePromise, responsePromise.json<T>()]);
 
-      this.logger?.info(
-        `${options.method} ${response.url} ${response.statusCode} ${new Date().getTime() - response.timings.start} ms`
-      );
+      this.logger?.info(`${options.method} ${url} ${statusCode} ${new Date().getTime() - timings.start} ms`);
       this.logger?.debug('request-options', JSON.stringify(options).replace(/\\n/g, ''));
       return json;
     } catch (error) {
-      const { context, headers, method } = error.options;
-      const duration = (error.timings?.error || error.timings.end) - error.timings?.start;
-      const code = error.response?.statusCode || error.code;
-
-      if (this.logger && (error instanceof HTTPError || error instanceof CancelError)) {
-        this.logger.error(
-          '\n' +
-            '--------------------------------------------------------------------\n' +
-            `${method} ${this.prefixUrl}${path} ${code || 'unkown statusCode'} (${duration ? duration : ' - '} ms)\n` +
-            `headers: ${JSON.stringify(headers)}\n` +
-            `request-options: ${JSON.stringify({ ...options, context }).replace(/\\n/g, '')}\n` +
-            `error:${error.message}\n` +
-            `stack:${error.stack}\n` +
-            '--------------------------------------------------------------------'
-        );
-      }
-      throw new RequestException({ message: error.message, statusCode: code, innerError: error, stack: error?.stack });
+      throw this.#logAndThrowError({ error, path, options });
     }
+  }
+
+  #logAndThrowError({ error, path, options }: { error: Error; path: string; options: Options }) {
+    let code;
+    if (this.logger && (error instanceof HTTPError || error instanceof CancelError)) {
+      const { context, headers, method } = error.options;
+      const { start, end, error: err } = error?.timings ?? {};
+      const duration = err && end && start && (err ?? end) - start;
+      code = error?.response.statusCode ?? error.code;
+
+      this.logger.error(
+        '\n' +
+          '--------------------------------------------------------------------\n' +
+          `${method} ${this.prefixUrl}${path} ${code ?? 'unkown statusCode'} (${duration ? duration : ' - '} ms)\n` +
+          `headers: ${JSON.stringify(headers)}\n` +
+          `request-options: ${JSON.stringify({ ...options, context }).replace(/\\n/g, '')}\n` +
+          `error:${error.message}\n` +
+          `stack:${error.stack}\n` +
+          '--------------------------------------------------------------------'
+      );
+    }
+    return new RequestException({
+      message: error.message,
+      statusCode: code ?? 'unknown code',
+      innerError: error,
+      stack: error?.stack
+    });
   }
 
   async get<T>(path: string, options?: RequestOptions): Promise<T> {
@@ -181,3 +189,5 @@ export class HttpClient implements IHttpClient {
     return void 0;
   }
 }
+
+
