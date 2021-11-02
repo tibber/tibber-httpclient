@@ -2,7 +2,7 @@
 import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError } from 'got/dist/source';
 import { AbortSignal } from 'abort-controller';
 
-type GotOptions = Pick<Options, 'method' | 'timeout' | 'decompress' | 'json' | 'retry'>;
+type GotOptions = Pick<Options, 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers'>;
 interface RequestOptions extends GotOptions {
   abortSignal?: AbortSignal;
 }
@@ -77,7 +77,8 @@ export class HttpClient implements IHttpClient {
     };
 
     const addToHeader = (header: Record<string, string>) => {
-      gotOptions?.headers ? Object.assign(gotOptions.headers, header) : (gotOptions.headers = header);
+      gotOptions.headers ??= header;
+      gotOptions.headers = { ...gotOptions.headers, ...header };
     };
 
     // assemble default authorization header
