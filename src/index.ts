@@ -28,9 +28,9 @@ export interface HttpClientConfig {
 }
 
 export class RequestException extends Error {
-  public code;
-  public stack;
-  public inner;
+  code;
+  stack;
+  inner;
   constructor({
     message,
     statusCode,
