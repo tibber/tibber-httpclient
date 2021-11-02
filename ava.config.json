@@ -1,15 +1,11 @@
 {
-    "files": [
-     "./test/*"
-    ],
-    "nonSemVerExperiments": {
-     "nextGenConfig": true,
-     "configurableModuleFormat": true
-    },
-    "extensions": {
-     "ts": "module"
-    },
-    "nodeArguments": [
-     "--loader=ts-node/esm"
-    ]
-   }
+  "files": ["/test/*"],
+  "nonSemVerExperiments": {
+    "nextGenConfig": true,
+    "configurableModuleFormat": true
+  },
+  "extensions": {
+    "ts": "module"
+  },
+  "nodeArguments": ["--loader=ts-node/esm"]
+}
