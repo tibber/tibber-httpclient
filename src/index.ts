@@ -132,7 +132,7 @@ export class HttpClient implements IHttpClient {
       const duration = (error.timings?.error || error.timings.end) - error.timings?.start;
       const code = error.response?.statusCode || error.code;
 
-      if (error instanceof HTTPError || error instanceof CancelError) {
+      if (this._logger && (error instanceof HTTPError || error instanceof CancelError)) {
         this._logger.error(
           '\n' +
             '--------------------------------------------------------------------\n' +
