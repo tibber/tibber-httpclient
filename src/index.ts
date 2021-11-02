@@ -141,7 +141,7 @@ export class HttpClient implements IHttpClient {
       this.logger.error(
         '\n' +
           '--------------------------------------------------------------------\n' +
-          `${method} ${this.prefixUrl}${path} ${code ?? 'unkown statusCode'} (${duration ? duration : ' - '} ms)\n` +
+          `${method} ${this.prefixUrl}${path} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
           `headers: ${JSON.stringify(headers)}\n` +
           `request-options: ${JSON.stringify({ ...options, context }).replace(/\\n/g, '')}\n` +
           `error:${error.message}\n` +
@@ -186,7 +186,7 @@ export class HttpClient implements IHttpClient {
       path: path,
       options: { ...options, method: 'DELETE', json: payload }
     });
-    return void 0;
+    return undefined;
   }
 }
 
