@@ -172,7 +172,7 @@ export class HttpClient implements IHttpClient {
       options: { ...options, method: 'PATCH', json: payload }
     });
   }
-  async delete(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<void> {
+  async delete(path: string, payload?: Record<string, unknown>, options?: RequestOptions): Promise<void> {
     await this._requestJson({
       path: path,
       options: { ...options, method: 'DELETE', json: payload }
