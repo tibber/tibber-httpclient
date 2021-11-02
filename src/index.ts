@@ -21,18 +21,10 @@ export interface Logger {
   debug(...args: unknown[]): void;
 }
 
-export interface HttpClientContext {
-  [key: string]: string | Logger | undefined;
+export interface HttpClientConfig {
   basicAuthUserName?: string;
   basicAuthPassword?: string;
   bearerToken?: string;
-  logger?: Logger;
-}
-
-export interface HttpClientConfiguration {
-  prefixUrl: string;
-  context?: HttpClientContext;
-  requestOptions?: Options;
 }
 
 export class RequestException extends Error {
@@ -65,37 +57,50 @@ export class HttpClient implements IHttpClient {
   private _logger: Logger;
   private _prefixUrl: string;
 
-  constructor(config: HttpClientConfiguration) {
-    const options: Options = { ...config };
-
-    const addToHeader = (header: Record<string, string>) => {
-      options.headers ? Object.assign(options.headers, header) : (options.headers = header);
+  constructor({
+    prefixUrl,
+    logger,
+    config,
+    options
+  }: {
+    prefixUrl: string;
+    logger?: Logger;
+    config?: HttpClientConfig;
+    options?: Options;
+  }) {
+    // initialize all default options for this client
+    const gotOptions: Options = {
+      retry: 0,
+      ...options,
+      context: { ...options?.context, ...config },
+      prefixUrl: prefixUrl
     };
 
-    // default authorization header
-    if (options.context?.basicAuthUserName && options.context?.basicAuthPassword) {
+    const addToHeader = (header: Record<string, string>) => {
+      gotOptions?.headers ? Object.assign(gotOptions.headers, header) : (gotOptions.headers = header);
+    };
+
+    // assemble default authorization header
+    if (config?.basicAuthUserName && config?.basicAuthPassword) {
       addToHeader({
-        Authorization: `Basic ${Buffer.from(
-          options.context.basicAuthUserName + ':' + options.context.basicAuthPassword
-        ).toString('base64')}`
+        Authorization: `Basic ${Buffer.from(config.basicAuthUserName + ':' + config.basicAuthPassword).toString(
+          'base64'
+        )}`
       });
-    } else if (options.context?.bearerToken) {
-      addToHeader({ Authorization: 'Bearer ' + options.context.bearer });
+    } else if (config?.bearerToken) {
+      addToHeader({ Authorization: 'Bearer ' + config.bearerToken });
     }
 
     // ininitialize logger
-    if (config?.context?.logger) {
-      this._logger = config.context.logger;
-      delete config.context.logger;
-    } else {
-      this._logger = console;
+    if (logger) {
+      this._logger = logger;
     }
 
     // save prefixUrl
-    this._prefixUrl = config.prefixUrl;
+    this._prefixUrl = prefixUrl;
 
     // initialize got and extend it with default options
-    this._got = got.extend({ ...options, retry: 0 });
+    this._got = got.extend(gotOptions);
   }
 
   private _request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
