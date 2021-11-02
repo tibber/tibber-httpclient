@@ -74,3 +74,16 @@ test('Error request', async (t) => {
     t.is(error.code, 400);
   }
 });
+
+test('Create basic auth header', async (t) => {
+  const client = new HttpClient({
+    prefixUrl: 'https://httpbin.org',
+    config: { basicAuthPassword: '1234', basicAuthUserName: 'myname' }
+  });
+  try {
+    // trigger error, to get access to underlying request and check header
+    await client.get('status/400');
+  } catch (error) {
+    t.is(error.inner.options.headers.authorization, 'Basic bXluYW1lOjEyMzQ=');
+  }
+});
