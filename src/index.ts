@@ -104,7 +104,7 @@ export class HttpClient implements IHttpClient {
     this.got = got.extend(gotOptions);
   }
 
-  _request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
+  #request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
     const { abortSignal, ...gotOptions } = options || {};
     const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
     const responsePromise = this.got(sanitizedPath, { ...gotOptions });
@@ -118,9 +118,9 @@ export class HttpClient implements IHttpClient {
     return responsePromise;
   }
 
-  async _requestJson<T>({ path, options }: { path: string; options: RequestOptions }): Promise<T> {
+  async #requestJson<T>({ path, options }: { path: string; options: RequestOptions }): Promise<T> {
     try {
-      const responsePromise = this._request(path, options);
+      const responsePromise = this.#request(path, options);
       const [response, json] = await Promise.all([responsePromise, responsePromise.json<T>()]);
 
       this.logger?.info(
@@ -150,31 +150,31 @@ export class HttpClient implements IHttpClient {
   }
 
   async get<T>(path: string, options?: RequestOptions): Promise<T> {
-    return this._requestJson({
+    return this.#requestJson({
       path: path,
       options: { ...options, method: 'GET' }
     });
   }
   async post<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T> {
-    return this._requestJson({
+    return this.#requestJson({
       path: path,
       options: { ...options, method: 'POST', json: payload }
     });
   }
   async put<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T> {
-    return this._requestJson({
+    return this.#requestJson({
       path: path,
       options: { ...options, method: 'PUT', json: payload }
     });
   }
   async patch<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T> {
-    return this._requestJson({
+    return this.#requestJson({
       path: path,
       options: { ...options, method: 'PATCH', json: payload }
     });
   }
   async delete(path: string, payload?: Record<string, unknown>, options?: RequestOptions): Promise<void> {
-    await this._requestJson({
+    await this.#requestJson({
       path: path,
       options: { ...options, method: 'DELETE', json: payload }
     });
