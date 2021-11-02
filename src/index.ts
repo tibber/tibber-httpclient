@@ -1,3 +1,4 @@
+/* eslint-disable require-jsdoc */
 import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError } from 'got/dist/source';
 import { AbortSignal } from 'abort-controller';
 
@@ -8,16 +9,16 @@ interface RequestOptions extends GotOptions {
 
 export interface IHttpClient {
   get<T>(path: string, options?: RequestOptions): Promise<T>;
-  post<T>(path: string, payload: Partial<T>, options?: RequestOptions): Promise<T>;
-  patch<T>(path: string, payload: Partial<T>, options?: RequestOptions): Promise<T>;
-  put<T>(path: string, payload: T, options?: RequestOptions): Promise<T>;
-  delete<T>(path: string, payload?: Partial<T>, options?: RequestOptions): Promise<void>;
+  post<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T>;
+  patch<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T>;
+  put<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T>;
+  delete(path: string, payload?: Record<string, unknown>, options?: RequestOptions): Promise<void>;
 }
 
 export interface Logger {
-  info(...args: any[]): void;
-  error(...args: any[]): void;
-  debug(...args: any[]): void;
+  info(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+  debug(...args: unknown[]): void;
 }
 
 export interface HttpClientContext {
@@ -90,7 +91,7 @@ export class HttpClient implements IHttpClient {
       this._logger = console;
     }
 
-    //save prefixUrl
+    // save prefixUrl
     this._prefixUrl = config.prefixUrl;
 
     // initialize got and extend it with default options
@@ -148,28 +149,28 @@ export class HttpClient implements IHttpClient {
       options: { ...options, method: 'GET' }
     });
   }
-  async post<T>(path: string, payload: Partial<T>, options?: RequestOptions): Promise<T> {
+  async post<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T> {
     return this._requestJson({
       path: path,
       options: { ...options, method: 'POST', json: payload }
     });
   }
-  async put<T>(path: string, payload: Partial<T>, options?: RequestOptions): Promise<T> {
+  async put<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T> {
     return this._requestJson({
       path: path,
       options: { ...options, method: 'PUT', json: payload }
     });
   }
-  async patch<T>(path: string, payload: Partial<T>, options?: RequestOptions): Promise<T> {
+  async patch<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T> {
     return this._requestJson({
       path: path,
       options: { ...options, method: 'PATCH', json: payload }
     });
   }
-  async delete(path: string, options?: RequestOptions): Promise<void> {
+  async delete(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<void> {
     await this._requestJson({
       path: path,
-      options: { ...options, method: 'DELETE' }
+      options: { ...options, method: 'DELETE', json: payload }
     });
     return void 0;
   }
