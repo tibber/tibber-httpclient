@@ -4,7 +4,7 @@ import { AbortController } from 'abort-controller';
 
 interface Todo {
   id?: number;
-  userId: any;
+  userId: number;
   title: string;
   body: string;
 }
