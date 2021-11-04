@@ -5,15 +5,15 @@
  "author": "Tibber",
  "license": "MIT",
  "scripts": {
-    "lint": "eslint . --ext .js,.ts,.json",
-    "test": "yarn ava --verbose",
-    "type-check": "tsc --noEmit",
-    "type-check:watch": "yarn type-check -- --watch",
-    "build:types": "tsc --declaration",
-    "build": "yarn clean && yarn lint && yarn build:types && esbuild src/index.ts --bundle --platform=node --minify --sourcemap=external --outfile=dist/index.js",
-    "build:dev": "yarn clean && yarn build:types && esbuild src/index.ts --bundle --sourcemap=external --outfile=dist/index.js",
-    "build:watch": "esbuild src/index.ts --bundle --watch --sourcemap=external --outfile=dist/index.js",
-    "clean": "yarn del ./dist"
+  "lint": "eslint . --ext .js,.ts,.json",
+  "test": "yarn ava --verbose",
+  "type-check": "tsc --noEmit",
+  "type-check:watch": "yarn type-check -- --watch",
+  "build:types": "tsc --declaration",
+  "build": "yarn clean && yarn lint && yarn build:types && esbuild src/index.ts --bundle --platform=node --minify --sourcemap=external --outfile=dist/index.js",
+  "build:dev": "yarn clean && yarn build:types && esbuild src/index.ts --bundle --sourcemap=external --outfile=dist/index.js",
+  "build:watch": "esbuild src/index.ts --bundle --watch --sourcemap=external --outfile=dist/index.js",
+  "clean": "yarn del ./dist"
  },
  "devDependencies": {
   "@ava/typescript": "^2.0.0",
@@ -22,6 +22,7 @@
   "@typescript-eslint/eslint-plugin": "^5.3.0",
   "@typescript-eslint/parser": "^5.3.0",
   "ava": "^3.15.0",
+  "del-cli": "^4.0.1",
   "esbuild": "^0.13.12",
   "eslint-config-google": "^0.14.0",
   "eslint-config-prettier": "^8.3.0",
@@ -35,18 +36,18 @@
   "got": "^11.8.2"
  },
  "ava": {
-   "files": [
-    "./test/*"
-   ],
-   "nonSemVerExperiments": {
-    "nextGenConfig": true,
-    "configurableModuleFormat": true
-   },
-   "extensions": {
-    "ts": "module"
-   },
-   "nodeArguments": [
-     "--loader=ts-node/esm"
-   ]
-  }
+  "files": [
+   "./test/*"
+  ],
+  "nonSemVerExperiments": {
+   "nextGenConfig": true,
+   "configurableModuleFormat": true
+  },
+  "extensions": {
+   "ts": "module"
+  },
+  "nodeArguments": [
+   "--loader=ts-node/esm"
+  ]
+ }
 }
