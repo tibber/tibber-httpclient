@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit",
     "type-check:watch": "yarn type-check -- --watch",
     "build:types": "tsc --declaration",
-    "build": "yarn clean && yarn build:types && esbuild src/index.ts --bundle --platform=node --minify --sourcemap=external --outfile=dist/index.js",
+    "build": "yarn clean && yarn lint && yarn build:types && esbuild src/index.ts --bundle --platform=node --minify --sourcemap=external --outfile=dist/index.js",
     "build:dev": "yarn clean && yarn build:types && esbuild src/index.ts --bundle --sourcemap=external --outfile=dist/index.js",
     "build:watch": "esbuild src/index.ts --bundle --watch --sourcemap=external --outfile=dist/index.js",
     "clean": "yarn del ./dist"
