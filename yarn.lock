@@ -2789,13 +2789,6 @@ text-table@^0.2.0:
   resolved "https://registry.yarnpkg.com/text-table/-/text-table-0.2.0.tgz#7f5ee823ae805207c00af2df4a84ec3fcfa570b4"
   integrity sha1-f17oI66AUgfACvLfSoTsP8+lcLQ=
 
-"tibber-httpclient-got@file:../tibber-httpclient-got":
-  version "1.0.0"
-  dependencies:
-    abort-controller "^3.0.0"
-    got "^11.8.2"
-    tibber-httpclient-got "file:../../.cache/yarn/v6/npm-tibber-httpclient-got-1.0.0-fb87c27e-5043-44e6-a4a8-ece8d64688e0-1635862622790/node_modules/tibber-httpclient-got"
-
 time-zone@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/time-zone/-/time-zone-1.0.0.tgz#99c5bf55958966af6d06d83bdf3800dc82faec5d"
