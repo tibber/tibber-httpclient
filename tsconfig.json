@@ -9,6 +9,10 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "target": "ES2019",
-        "module": "commonjs",
-    }
+        "module": "ES2020",
+        "moduleResolution": "node"
+    },
+    "include": [
+        "./src"
+    ]
 }
