@@ -2,14 +2,14 @@
     "compilerOptions": {
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "outDir": "./dist",
+        "outDir": "./dist/src",
         "sourceMap": false,
         "allowJs": true,
         "strict": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "target": "ES2019",
-        "module": "ES2020",
+        "module": "commonjs",
         "moduleResolution": "node"
     },
     "include": [

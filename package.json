@@ -4,7 +4,6 @@
   "main": "./dist/src/index.js",
   "author": "Tibber",
   "license": "MIT",
-  "type": "module",
   "scripts": {
     "lint": "eslint . --ext .js,.ts,.json",
     "test": "yarn ava --verbose",
