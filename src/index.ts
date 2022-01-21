@@ -1,6 +1,7 @@
 /* eslint-disable require-jsdoc */
 import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError } from 'got/dist/source';
 import { AbortSignal } from 'abort-controller';
+import NodeCache from 'node-cache';
 
 type GotOptions = Pick<Options, 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers'>;
 interface RequestOptions extends GotOptions {
@@ -194,4 +195,89 @@ export class HttpClient implements IHttpClient {
   }
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type HttpMethod = 'get' | 'post' | 'patch' | 'put' | 'delete';
+export class TestHttpClient implements IHttpClient {
+  public _routePayloads: Record<string,Record<string, any>>
+  public calls: Record<HttpMethod, Record<string, any>>
+
+  constructor(routePayloads: Record<string,Record<HttpMethod, unknown>>) {
+      this._routePayloads = routePayloads;
+      this.calls = { get: {}, post: {}, patch: {}, put: {}, delete: {} };
+  }
+
+  public async get<T>(route: string): Promise<T> {
+      this._routePayloads.get[route];
+      return this._routePayloads.get[route];
+  }
+
+  public async post<T>(route: string, payload: any): Promise<T> {
+      this.calls.post[route] = payload || {};
+      return this._routePayloads.post[route];
+  }
+
+  public async put<T>(route: string, payload: any): Promise<T> {
+      this.calls.put[route] = payload || {};
+      return this._routePayloads.put[route];
+  }
+
+  public async patch<T>(route: string, payload: any): Promise<T> {
+      this.calls.patch[route] = payload || {};
+      return this._routePayloads.patch[route];
+  }
+
+  public async delete<T>(route: string): Promise<T> {
+      this.calls.delete[route] = undefined;
+      return this._routePayloads.delete[route];
+  }
+}
+
+export interface ICachedHttpClient extends IHttpClient {
+  getNoCache<T>(route: string): Promise<T>;
+}
+export class CachedClient implements ICachedHttpClient {
+  private _httpClient: IHttpClient;
+  private _logger: Logger;
+  private _cache: NodeCache;
+  constructor(httpClient: HttpClient, logger: Logger, cache: NodeCache) {
+      this._httpClient = httpClient;
+      this._logger = logger;
+      this._cache = cache;
+  }
+
+  private async _get<T>(route: string, noCache: boolean): Promise<T> {
+
+      if (!noCache) {
+          const cached = this._cache.get<T>(route);
+          if (cached) {
+              this._logger && this._logger.info(`returning cached result for route "${route}"`);
+              return cached;
+          }
+      }
+      const result = await this._httpClient.get<T>(route);
+      this._cache.set(route, result);
+      return result;
+  }
+
+  public async get<T>(route: string): Promise<T> { return this._get(route, false); }
+  public async getNoCache<T>(route: string): Promise<T> { return this._get(route, true); }
+
+  public async post<T>(route: string, payload?: any): Promise<T> {
+      return await this._httpClient.post<T>(route, payload);
+  }
+
+  public async put<T>(route: string, payload?: any): Promise<T> {
+      return await this._httpClient.put<T>(route, payload);
+  }
+
+  public async patch<T>(route: string, payload?: any): Promise<T> {
+      return await this._httpClient.patch<T>(route, payload);
+  }
+
+  public async delete(route: string): Promise<void> {
+      return await this._httpClient.delete(route);
+  }
+}
+
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
