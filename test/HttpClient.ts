@@ -29,7 +29,18 @@ test('POST', async (t) => {
     body: 'quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto'
   };
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
-  const response: Todo = await client.post('posts', payload);
+  const response: Todo = await client.post('posts', { json: payload });
+  t.is(response.id, 101);
+});
+
+test('POST form url encoded', async (t) => {
+  const payload = {
+    userId: 1,
+    title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
+    body: 'quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto'
+  };
+  const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
+  const response: Todo = await client.post('posts', { form: payload });
   t.is(response.id, 101);
 });
 
@@ -38,7 +49,7 @@ test('PATCH', async (t) => {
     title: 'title post'
   };
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
-  const response: Todo = await client.patch('posts/1', payload);
+  const response: Todo = await client.patch('posts/1', { json: payload });
   t.is(response.userId, 1);
 });
 

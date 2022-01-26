@@ -3,17 +3,17 @@ import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError 
 import { AbortSignal } from 'abort-controller';
 import NodeCache from 'node-cache';
 
-type GotOptions = Pick<Options, 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers'>;
+type GotOptions = Pick<Options, 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form'>;
 interface RequestOptions extends GotOptions{
   abortSignal?: AbortSignal;
 }
 
 export interface IHttpClient {
   get<T>(path: string, options?: RequestOptions): Promise<T>;
-  post<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T>;
-  patch<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T>;
-  put<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T>;
-  delete(path: string, payload?: Record<string, unknown>, options?: RequestOptions): Promise<void>;
+  post<T>(path: string, options?: RequestOptions): Promise<T>;
+  patch<T>(path: string, options?: RequestOptions): Promise<T>;
+  put<T>(path: string, options?: RequestOptions): Promise<T>;
+  delete(path: string, options?: RequestOptions): Promise<void>;
 }
 
 export interface Logger {
@@ -165,28 +165,28 @@ export class HttpClient implements IHttpClient {
       options: { ...options, method: 'GET' }
     });
   }
-  async post<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T> {
+  async post<T>(path: string, options?: RequestOptions): Promise<T> {
     return this.#requestJson({
       path: path,
-      options: { ...options, method: 'POST', json: payload }
+      options: { ...options, method: 'POST' }
     });
   }
-  async put<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T> {
+  async put<T>(path: string, options?: RequestOptions): Promise<T> {
     return this.#requestJson({
       path: path,
-      options: { ...options, method: 'PUT', json: payload }
+      options: { ...options, method: 'PUT'}
     });
   }
-  async patch<T>(path: string, payload: Record<string, unknown>, options?: RequestOptions): Promise<T> {
+  async patch<T>(path: string, options?: RequestOptions): Promise<T> {
     return this.#requestJson({
       path: path,
-      options: { ...options, method: 'PATCH', json: payload }
+      options: { ...options, method: 'PATCH'}
     });
   }
-  async delete(path: string, payload?: Record<string, unknown>, options?: RequestOptions): Promise<void> {
+  async delete(path: string, options?: RequestOptions): Promise<void> {
     await this.#requestJson({
       path: path,
-      options: { ...options, method: 'DELETE', json: payload }
+      options: { ...options, method: 'DELETE'}
     });
     return undefined;
   }
