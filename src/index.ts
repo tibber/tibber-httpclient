@@ -4,7 +4,7 @@ import { AbortSignal } from 'abort-controller';
 import NodeCache from 'node-cache';
 
 type GotOptions = Pick<Options, 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers'>;
-interface RequestOptions extends GotOptions {
+interface RequestOptions extends GotOptions{
   abortSignal?: AbortSignal;
 }
 
@@ -50,56 +50,53 @@ export class RequestException extends Error {
   }
 }
 
+type HttpClientInitParams = {
+  prefixUrl?: string;
+  logger?: Logger;
+  config?: HttpClientConfig;
+  options?: Options;
+}
+
 /**
  * HttpClient to make network requests
  */
 export class HttpClient implements IHttpClient {
   got: Got;
   logger: Logger | undefined;
-  prefixUrl: string;
+  prefixUrl: string | undefined;
 
-  constructor({
-    prefixUrl,
-    logger,
-    config,
-    options
-  }: {
-    prefixUrl: string;
-    logger?: Logger;
-    config?: HttpClientConfig;
-    options?: Options;
-  }) {
-    // initialize all default options for this client
-    const gotOptions: Options = {
-      retry: 0,
-      ...options,
-      context: { ...options?.context, ...config },
-      prefixUrl: prefixUrl
-    };
-
+  constructor(initParams?: HttpClientInitParams) {
     const addToHeader = (header: Record<string, string>) => {
       gotOptions.headers ??= header;
       gotOptions.headers = { ...gotOptions.headers, ...header };
     };
 
+    // initialize all default options for this client
+    const gotOptions: Options = {
+      retry: 0,
+      ...initParams?.options,
+      context: { ...initParams?.options?.context, ...initParams?.config },
+      prefixUrl: initParams?.prefixUrl
+    };
+
     // assemble default authorization header
-    if (config?.basicAuthUserName && config?.basicAuthPassword) {
+    if (initParams?.config?.basicAuthUserName && initParams?.config?.basicAuthPassword) {
       addToHeader({
-        Authorization: `Basic ${Buffer.from(config.basicAuthUserName + ':' + config.basicAuthPassword).toString(
+        Authorization: `Basic ${Buffer.from(initParams?.config.basicAuthUserName + ':' + initParams?.config.basicAuthPassword).toString(
           'base64'
         )}`
       });
-    } else if (config?.bearerToken) {
-      addToHeader({ Authorization: 'Bearer ' + config.bearerToken });
+    } else if (initParams?.config?.bearerToken) {
+      addToHeader({ Authorization: 'Bearer ' + initParams?.config.bearerToken });
     }
 
     // initialize logger
-    if (logger) {
-      this.logger = logger;
+    if (initParams?.logger) {
+      this.logger = initParams?.logger;
     }
 
     // save prefixUrl
-    this.prefixUrl = prefixUrl;
+    this.prefixUrl = initParams?.prefixUrl;
 
     // initialize got and extend it with default options
     this.got = got.extend(gotOptions);

@@ -10,6 +10,12 @@ interface Todo {
   body: string;
 }
 
+test('Instantiate client without init parameters', async (t) => {
+  const client = new HttpClient();
+  const response: Todo = await client.get('https://jsonplaceholder.typicode.com/posts/1')
+  t.is(response.userId, 1)
+})
+
 test('basic GET request', async (t) => {
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
   const response: Todo = await client.get('posts/1');
