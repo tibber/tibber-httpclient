@@ -22,6 +22,12 @@ test('basic GET request', async (t) => {
   t.is(response.id, 1);
 });
 
+test('GET request, return repsonse', async (t) => {
+  const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
+  const response = await client.request('posts/1', { method: 'GET'});
+  t.is(response.statusCode, 200);
+});
+
 test('POST', async (t) => {
   const payload = {
     userId: 1,

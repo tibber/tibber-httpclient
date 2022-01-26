@@ -190,6 +190,9 @@ export class HttpClient implements IHttpClient {
     });
     return undefined;
   }
+  async request(path: string, options: RequestOptions): Promise<Response<unknown>> {
+      return this.got(path, options)
+  }
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
