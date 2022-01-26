@@ -3,7 +3,7 @@ import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError 
 import { AbortSignal } from 'abort-controller';
 import NodeCache from 'node-cache';
 
-type GotOptions = Pick<Options, 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form'>;
+type GotOptions = Pick<Options, 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect'>;
 interface RequestOptions extends GotOptions{
   abortSignal?: AbortSignal;
 }
