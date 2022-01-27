@@ -102,8 +102,19 @@ export class HttpClient implements IHttpClient {
 
   // set the method and decide to place the 'json' or 'form' property, or not when no data.
   #processOptions = (method: Method, data: Record<string, unknown> | undefined, options?: RequestOptions): RequestOptions => {
-    const jsonOrForm = options?.isForm ?? false ? 'form' : data ? 'json' : undefined;
-    return {...(options ?? {}), ...(jsonOrForm ? {[jsonOrForm]: data} : {}), method }
+    const jsonOrForm = options?.isForm ?? false
+      ? 'form'
+      : data !== undefined && data !== null
+        ? 'json'
+        : undefined;
+    return {
+      ...(options ?? {}),
+      ...(jsonOrForm !== undefined
+        ? {[jsonOrForm]: data}
+        : {}
+        ),
+        method
+      };
   }
 
   #request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
@@ -215,8 +226,8 @@ export class HttpClient implements IHttpClient {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type HttpMethodCall = 'get' | 'post' | 'patch' | 'put' | 'delete';
 export class TestHttpClient implements IHttpClient {
-  public _routePayloads: Record<string,Record<string, any>>
-  public calls: Record<HttpMethodCall, Record<string, any>>
+  _routePayloads: Record<string,Record<string, any>>
+  calls: Record<HttpMethodCall, Record<string, any>>
 
   constructor(routePayloads: Record<string,Record<HttpMethodCall, unknown>>) {
       this._routePayloads = routePayloads;
@@ -229,17 +240,17 @@ export class TestHttpClient implements IHttpClient {
       return Promise.resolve(response);
   }
 
-  public async post<T>(route: string, data: any): Promise<T> {
+  public async post<T>(route: string, data: Record<string, unknown>): Promise<T> {
       this.calls.post[route] = data || {};
       return this._routePayloads.post[route];
   }
 
-  public async put<T>(route: string, data: any): Promise<T> {
+  public async put<T>(route: string, data: Record<string, unknown>): Promise<T> {
       this.calls.put[route] = data || {};
       return this._routePayloads.put[route];
   }
 
-  public async patch<T>(route: string, data: any): Promise<T> {
+  public async patch<T>(route: string, data: Record<string, unknown>): Promise<T> {
       this.calls.patch[route] = data || {};
       return this._routePayloads.patch[route];
   }
@@ -280,15 +291,15 @@ export class CachedClient implements ICachedHttpClient {
   public async get<T>(route: string): Promise<T> { return this._get(route, false); }
   public async getNoCache<T>(route: string): Promise<T> { return this._get(route, true); }
 
-  public async post<T>(route: string, data?: any): Promise<T> {
+  public async post<T>(route: string, data?: Record<string, unknown>): Promise<T> {
       return await this._httpClient.post<T>(route, data);
   }
 
-  public async put<T>(route: string, data?: any): Promise<T> {
+  public async put<T>(route: string, data?: Record<string, unknown>): Promise<T> {
       return await this._httpClient.put<T>(route, data);
   }
 
-  public async patch<T>(route: string, data?: any): Promise<T> {
+  public async patch<T>(route: string, data?: Record<string, unknown>): Promise<T> {
       return await this._httpClient.patch<T>(route, data);
   }
 
