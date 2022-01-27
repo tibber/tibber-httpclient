@@ -1,19 +1,20 @@
 /* eslint-disable require-jsdoc */
-import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError } from 'got/dist/source';
+import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError, Method } from 'got/dist/source';
 import { AbortSignal } from 'abort-controller';
 import NodeCache from 'node-cache';
 
-type GotOptions = Pick<Options, 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect'>;
+type GotOptions = Pick<Options, 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect' | 'path'>;
 interface RequestOptions extends GotOptions{
   abortSignal?: AbortSignal;
+  isForm?: boolean;
 }
 
 export interface IHttpClient {
-  get<T>(path: string, options?: RequestOptions): Promise<T>;
-  post<T>(path: string, options?: RequestOptions): Promise<T>;
-  patch<T>(path: string, options?: RequestOptions): Promise<T>;
-  put<T>(path: string, options?: RequestOptions): Promise<T>;
-  delete(path: string, options?: RequestOptions): Promise<void>;
+  get<T>(path: string, options?: Omit<RequestOptions, 'json'>): Promise<T>;
+  post<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
+  patch<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
+  put<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
+  delete(path: string, options?: Omit<RequestOptions, 'json'>): Promise<void>;
 }
 
 export interface Logger {
@@ -56,16 +57,13 @@ type HttpClientInitParams = {
   config?: HttpClientConfig;
   options?: Options;
 }
-
-/**
- * HttpClient to make network requests
- */
 export class HttpClient implements IHttpClient {
   got: Got;
   logger: Logger | undefined;
   prefixUrl: string | undefined;
 
   constructor(initParams?: HttpClientInitParams) {
+
     const addToHeader = (header: Record<string, string>) => {
       gotOptions.headers ??= header;
       gotOptions.headers = { ...gotOptions.headers, ...header };
@@ -100,6 +98,12 @@ export class HttpClient implements IHttpClient {
 
     // initialize got and extend it with default options
     this.got = got.extend(gotOptions);
+  }
+
+  // set the method and decide to place the 'json' or 'form' property, or not when no data.
+  #processOptions = (method: Method, data: Record<string, unknown> | undefined, options?: RequestOptions): RequestOptions => {
+    const jsonOrForm = options?.isForm ?? false ? 'form' : data ? 'json' : undefined;
+    return {...(options ?? {}), ...(jsonOrForm ? {[jsonOrForm]: data} : {}), method }
   }
 
   #request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
@@ -159,70 +163,84 @@ export class HttpClient implements IHttpClient {
     return error;
   }
 
+
+
   async get<T>(path: string, options?: RequestOptions): Promise<T> {
+    const o = this.#processOptions( 'GET', undefined, options);
     return this.#requestJson({
       path: path,
-      options: { ...options, method: 'GET' }
+      options: o
     });
   }
-  async post<T>(path: string, options?: RequestOptions): Promise<T> {
+  async post<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T> {
+    const o = this.#processOptions( 'POST', data, options);
     return this.#requestJson({
       path: path,
-      options: { ...options, method: 'POST' }
+      options: o
     });
   }
-  async put<T>(path: string, options?: RequestOptions): Promise<T> {
+  async put<T>(path: string, data?: Record<string, unknown>, options?: RequestOptions): Promise<T> {
+    const o = this.#processOptions( 'PUT', data, options)
     return this.#requestJson({
       path: path,
-      options: { ...options, method: 'PUT'}
+      options: o
     });
   }
-  async patch<T>(path: string, options?: RequestOptions): Promise<T> {
+  async patch<T>(path: string, data?: Record<string, unknown>, options?: RequestOptions): Promise<T> {
+    const o = this.#processOptions( 'PATCH', data, options)
     return this.#requestJson({
       path: path,
-      options: { ...options, method: 'PATCH'}
+      options: o
     });
   }
   async delete(path: string, options?: RequestOptions): Promise<void> {
+    const o = this.#processOptions( 'DELETE', undefined, options)
     await this.#requestJson({
       path: path,
-      options: { ...options, method: 'DELETE'}
+      options: o
     });
     return undefined;
   }
-  async request(path: string, options: RequestOptions): Promise<Response<unknown>> {
+  /**
+   * @description Access to all 'got' supported options, returns the response instead of JSON.
+   * @param {string} path path or url
+   * @param {RequestOptions} options all options supported by 'got'
+   * @return {Response<unknown>}
+   */
+  async raw(path: string, options: RequestOptions): Promise<Response<unknown>> {
       return this.got(path, options)
   }
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type HttpMethod = 'get' | 'post' | 'patch' | 'put' | 'delete';
+type HttpMethodCall = 'get' | 'post' | 'patch' | 'put' | 'delete';
 export class TestHttpClient implements IHttpClient {
   public _routePayloads: Record<string,Record<string, any>>
-  public calls: Record<HttpMethod, Record<string, any>>
+  public calls: Record<HttpMethodCall, Record<string, any>>
 
-  constructor(routePayloads: Record<string,Record<HttpMethod, unknown>>) {
+  constructor(routePayloads: Record<string,Record<HttpMethodCall, unknown>>) {
       this._routePayloads = routePayloads;
       this.calls = { get: {}, post: {}, patch: {}, put: {}, delete: {} };
   }
 
   public async get<T>(route: string): Promise<T> {
-      this._routePayloads.get[route];
-      return this._routePayloads.get[route];
+      // this._routePayloads.get[route];
+      const response = this._routePayloads.get[route]
+      return Promise.resolve(response);
   }
 
-  public async post<T>(route: string, payload: any): Promise<T> {
-      this.calls.post[route] = payload || {};
+  public async post<T>(route: string, data: any): Promise<T> {
+      this.calls.post[route] = data || {};
       return this._routePayloads.post[route];
   }
 
-  public async put<T>(route: string, payload: any): Promise<T> {
-      this.calls.put[route] = payload || {};
+  public async put<T>(route: string, data: any): Promise<T> {
+      this.calls.put[route] = data || {};
       return this._routePayloads.put[route];
   }
 
-  public async patch<T>(route: string, payload: any): Promise<T> {
-      this.calls.patch[route] = payload || {};
+  public async patch<T>(route: string, data: any): Promise<T> {
+      this.calls.patch[route] = data || {};
       return this._routePayloads.patch[route];
   }
 
@@ -262,16 +280,16 @@ export class CachedClient implements ICachedHttpClient {
   public async get<T>(route: string): Promise<T> { return this._get(route, false); }
   public async getNoCache<T>(route: string): Promise<T> { return this._get(route, true); }
 
-  public async post<T>(route: string, payload?: any): Promise<T> {
-      return await this._httpClient.post<T>(route, payload);
+  public async post<T>(route: string, data?: any): Promise<T> {
+      return await this._httpClient.post<T>(route, data);
   }
 
-  public async put<T>(route: string, payload?: any): Promise<T> {
-      return await this._httpClient.put<T>(route, payload);
+  public async put<T>(route: string, data?: any): Promise<T> {
+      return await this._httpClient.put<T>(route, data);
   }
 
-  public async patch<T>(route: string, payload?: any): Promise<T> {
-      return await this._httpClient.patch<T>(route, payload);
+  public async patch<T>(route: string, data?: any): Promise<T> {
+      return await this._httpClient.patch<T>(route, data);
   }
 
   public async delete(route: string): Promise<void> {

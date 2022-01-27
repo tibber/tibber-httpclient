@@ -24,38 +24,38 @@ test('basic GET request', async (t) => {
 
 test('GET request, return repsonse', async (t) => {
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
-  const response = await client.request('posts/1', { method: 'GET'});
+  const response = await client.raw('posts/1', { method: 'GET'});
   t.is(response.statusCode, 200);
 });
 
 test('POST', async (t) => {
-  const payload = {
+  const data = {
     userId: 1,
     title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
     body: 'quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto'
   };
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
-  const response: Todo = await client.post('posts', { json: payload });
+  const response: Todo = await client.post('posts', data );
   t.is(response.id, 101);
 });
 
 test('POST form url encoded', async (t) => {
-  const payload = {
+  const data = {
     userId: 1,
     title: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit',
     body: 'quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto'
   };
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
-  const response: Todo = await client.post('posts', { form: payload });
+  const response: Todo = await client.post('posts', data, {isForm: true});
   t.is(response.id, 101);
 });
 
 test('PATCH', async (t) => {
-  const payload: Partial<Todo> = {
+  const data: Partial<Todo> = {
     title: 'title post'
   };
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
-  const response: Todo = await client.patch('posts/1', { json: payload });
+  const response: Todo = await client.patch('posts/1', data);
   t.is(response.userId, 1);
 });
 
