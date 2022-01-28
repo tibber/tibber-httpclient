@@ -256,6 +256,10 @@ export class TestHttpClient implements IHttpClient {
     this.calls.delete[route] = undefined;
     return this._routePayloads.delete[route];
   }
+
+  public resetCalls(): void {
+    this.calls = { get: {}, post: {}, patch: {}, put: {}, delete: {} };
+  }
 }
 
 export interface ICachedHttpClient extends IHttpClient {
