@@ -108,7 +108,16 @@ export class HttpClient implements IHttpClient {
     data: Record<string, unknown> | undefined,
     options?: RequestOptions
   ): RequestOptions => {
-    const jsonOrForm = options?.isForm ?? false ? 'form' : data !== undefined && data !== null ? 'json' : undefined;
+    let jsonOrForm: string | undefined;
+    if (options?.isForm) {
+      jsonOrForm = 'form';
+    } else {
+      if (data !== undefined && data !== null) {
+        jsonOrForm = 'json';
+      } else {
+        jsonOrForm = undefined;
+      }
+    }
     return {
       ...(options ?? {}),
       ...(jsonOrForm !== undefined ? { [jsonOrForm]: data } : {}),
@@ -220,10 +229,11 @@ export class HttpClient implements IHttpClient {
   }
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 type HttpMethodCall = 'get' | 'post' | 'patch' | 'put' | 'delete';
 export class TestHttpClient implements IHttpClient {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _routePayloads: Record<string, Record<string, any>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   calls: Record<HttpMethodCall, Record<string, any>>;
 
   constructor(routePayloads: Record<string, Record<HttpMethodCall, unknown>>) {
@@ -232,7 +242,6 @@ export class TestHttpClient implements IHttpClient {
   }
 
   public async get<T>(route: string): Promise<T> {
-    // this._routePayloads.get[route];
     const response = this._routePayloads.get[route];
     return Promise.resolve(response);
   }
@@ -311,5 +320,3 @@ export class CachedClient implements ICachedHttpClient {
     return await this._httpClient.delete(route);
   }
 }
-
-/* eslint-enable @typescript-eslint/no-explicit-any */
