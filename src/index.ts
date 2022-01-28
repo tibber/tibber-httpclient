@@ -1,4 +1,3 @@
-/* eslint-disable require-jsdoc */
 import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError, Method } from 'got/dist/source';
 import { AbortSignal } from 'abort-controller';
 import NodeCache from 'node-cache';
@@ -34,8 +33,11 @@ export interface HttpClientConfig {
 
 export class RequestException extends Error {
   code;
+
   stack;
+
   inner;
+
   constructor({
     message,
     statusCode,
@@ -62,7 +64,9 @@ type HttpClientInitParams = {
 };
 export class HttpClient implements IHttpClient {
   got: Got;
+
   logger: Logger | undefined;
+
   prefixUrl: string | undefined;
 
   constructor(initParams?: HttpClientInitParams) {
@@ -83,11 +87,11 @@ export class HttpClient implements IHttpClient {
     if (initParams?.config?.basicAuthUserName && initParams?.config?.basicAuthPassword) {
       addToHeader({
         Authorization: `Basic ${Buffer.from(
-          initParams?.config.basicAuthUserName + ':' + initParams?.config.basicAuthPassword
+          `${initParams?.config.basicAuthUserName}:${initParams?.config.basicAuthPassword}`
         ).toString('base64')}`
       });
     } else if (initParams?.config?.bearerToken) {
-      addToHeader({ Authorization: 'Bearer ' + initParams?.config.bearerToken });
+      addToHeader({ Authorization: `Bearer ${initParams?.config.bearerToken}` });
     }
 
     // initialize logger
@@ -102,38 +106,16 @@ export class HttpClient implements IHttpClient {
     this.got = got.extend(gotOptions);
   }
 
-  // set the method and decide to place the 'json' or 'form' property, or not when no data.
-  #processOptions = (
-    method: Method,
-    data: Record<string, unknown> | undefined,
-    options?: RequestOptions
-  ): RequestOptions => {
-    let jsonOrForm: string | undefined;
-    if (options?.isForm) {
-      jsonOrForm = 'form';
-    } else {
-      if (data !== undefined && data !== null) {
-        jsonOrForm = 'json';
-      } else {
-        jsonOrForm = undefined;
-      }
-    }
-    return {
-      ...(options ?? {}),
-      ...(jsonOrForm !== undefined ? { [jsonOrForm]: data } : {}),
-      method
-    };
-  };
-
   #request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
     const { abortSignal, ...gotOptions } = options ?? {};
     const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
     const responsePromise = this.got(sanitizedPath, { ...gotOptions });
 
-    abortSignal &&
+    if (abortSignal) {
       abortSignal.addEventListener('abort', () => {
         responsePromise.cancel();
       });
+    }
 
     return responsePromise;
   }
@@ -183,41 +165,46 @@ export class HttpClient implements IHttpClient {
   }
 
   async get<T>(path: string, options?: RequestOptions): Promise<T> {
-    const o = this.#processOptions('GET', undefined, options);
+    const o = processOptions('GET', undefined, options);
     return this.#requestJson({
-      path: path,
+      path,
       options: o
     });
   }
+
   async post<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T> {
-    const o = this.#processOptions('POST', data, options);
+    const o = processOptions('POST', data, options);
     return this.#requestJson({
-      path: path,
+      path,
       options: o
     });
   }
+
   async put<T>(path: string, data?: Record<string, unknown>, options?: RequestOptions): Promise<T> {
-    const o = this.#processOptions('PUT', data, options);
+    const o = processOptions('PUT', data, options);
     return this.#requestJson({
-      path: path,
+      path,
       options: o
     });
   }
+
   async patch<T>(path: string, data?: Record<string, unknown>, options?: RequestOptions): Promise<T> {
-    const o = this.#processOptions('PATCH', data, options);
+    const o = processOptions('PATCH', data, options);
     return this.#requestJson({
-      path: path,
+      path,
       options: o
     });
   }
+
   async delete(path: string, options?: RequestOptions): Promise<void> {
-    const o = this.#processOptions('DELETE', undefined, options);
+    const o = processOptions('DELETE', undefined, options);
     await this.#requestJson({
-      path: path,
+      path,
       options: o
     });
     return undefined;
   }
+
   /**
    * @description Access to all 'got' supported options, returns the response instead of JSON.
    * @param {string} path path or url
@@ -238,6 +225,7 @@ type RoutePayloads = { [p in HttpMethodCall]?: Record<string, unknown> };
 export class TestHttpClient implements IHttpClient {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _routePayloads: RoutePayloads;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   calls: Record<HttpMethodCall, Record<string, any>>;
 
@@ -295,7 +283,9 @@ export interface ICachedHttpClient extends IHttpClient {
 }
 export class CachedClient implements ICachedHttpClient {
   private _httpClient: IHttpClient;
+
   private _logger: Logger;
+
   private _cache: NodeCache;
 
   constructor(httpClient: HttpClient, logger: Logger, cache: NodeCache) {
@@ -308,7 +298,8 @@ export class CachedClient implements ICachedHttpClient {
     if (!noCache) {
       const cached = this._cache.get<T>(route);
       if (cached) {
-        this._logger && this._logger.info(`returning cached result for route "${route}"`);
+        this._logger?.info(`returning cached result for route "${route}"`);
+
         return cached;
       }
     }
@@ -320,23 +311,45 @@ export class CachedClient implements ICachedHttpClient {
   public async get<T>(route: string): Promise<T> {
     return this._get(route, false);
   }
+
   public async getNoCache<T>(route: string): Promise<T> {
     return this._get(route, true);
   }
 
   public async post<T>(route: string, data?: Record<string, unknown>): Promise<T> {
-    return await this._httpClient.post<T>(route, data);
+    return this._httpClient.post<T>(route, data);
   }
 
   public async put<T>(route: string, data?: Record<string, unknown>): Promise<T> {
-    return await this._httpClient.put<T>(route, data);
+    return this._httpClient.put<T>(route, data);
   }
 
   public async patch<T>(route: string, data?: Record<string, unknown>): Promise<T> {
-    return await this._httpClient.patch<T>(route, data);
+    return this._httpClient.patch<T>(route, data);
   }
 
   public async delete(route: string): Promise<void> {
-    return await this._httpClient.delete(route);
+    return this._httpClient.delete(route);
   }
 }
+
+// set the method and decide to place the 'json' or 'form' property, or not when no data.
+const processOptions = (
+  method: Method,
+  data: Record<string, unknown> | undefined,
+  options?: RequestOptions
+): RequestOptions => {
+  let jsonOrForm: string | undefined;
+  if (options?.isForm) {
+    jsonOrForm = 'form';
+  } else if (data !== undefined && data !== null) {
+    jsonOrForm = 'json';
+  } else {
+    jsonOrForm = undefined;
+  }
+  return {
+    ...(options ?? {}),
+    ...(jsonOrForm !== undefined ? { [jsonOrForm]: data } : {}),
+    method
+  };
+};

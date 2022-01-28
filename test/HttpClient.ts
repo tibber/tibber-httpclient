@@ -1,7 +1,7 @@
 import test from 'ava';
-import { HttpClient, RequestException, TestHttpClient } from '../src';
 import { AbortController } from 'abort-controller';
 import { HTTPError } from 'got/dist/source';
+import { HttpClient, RequestException, TestHttpClient } from '../src';
 
 interface Todo {
   id?: number;
@@ -68,7 +68,7 @@ test('DELETE', async (t) => {
 
 test('Canceling request with AbortSignal', async (t) => {
   const controller = new AbortController();
-  const signal = controller.signal;
+  const { signal } = controller;
   const client = new HttpClient({ prefixUrl: 'https://httpbin.org' });
   setTimeout(() => {
     controller.abort();

@@ -5,16 +5,29 @@
     },
     "extends": [
         "plugin:@typescript-eslint/recommended",
-        "google",
+        "airbnb-base",
+        "airbnb-typescript/base",
+        "plugin:json/recommended",
         "prettier" // needs to be last to override other plugins
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
         "ecmaVersion": 2021,
-        "sourceType": "module"
+        "sourceType": "module",
+        "project": "./tsconfig.json",
+        "extraFileExtensions": [
+          ".json"
+        ]
     },
     "plugins": [
         "@typescript-eslint"
     ],
-    "rules": {}
+    "rules": {
+      "json/*": ["error", { "allowComments": true }],
+      "max-classes-per-file": "off",
+      "@typescript-eslint/no-use-before-define": "off",
+      // normally this is a good rule, but since this property has been exposed, let's not potentially break people
+      "no-underscore-dangle": "off",
+      "object-curly-spacing": "error"
+    }
 }
