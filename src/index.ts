@@ -239,28 +239,24 @@ export class TestHttpClient implements IHttpClient {
     // we don't want to potentially break people's test by changing it though
     this.calls.get[route] = undefined;
     const response = this._routePayloads.get?.[route];
-    if (response === undefined) throw new Error(`GET route ${route} not found`);
     return Promise.resolve(response as T);
   }
 
   public async post<T>(route: string, data: Record<string, unknown>): Promise<T> {
     this.calls.post[route] = data || {};
     const response = this._routePayloads.post?.[route];
-    if (response === undefined) throw new Error(`POST route ${route} not found`);
     return response as T;
   }
 
   public async put<T>(route: string, data: Record<string, unknown>): Promise<T> {
     this.calls.put[route] = data || {};
     const response = this._routePayloads.put?.[route];
-    if (response === undefined) throw new Error(`PUT route ${route} not found`);
     return response as T;
   }
 
   public async patch<T>(route: string, data: Record<string, unknown>): Promise<T> {
     this.calls.patch[route] = data || {};
     const response = this._routePayloads.patch?.[route];
-    if (response === undefined) throw new Error(`PATCH route ${route} not found`);
     return response as T;
   }
 
@@ -269,7 +265,6 @@ export class TestHttpClient implements IHttpClient {
     // we don't want to potentially break people's test by changing it though
     this.calls.delete[route] = undefined;
     const response = this._routePayloads.delete?.[route];
-    if (response === undefined) throw new Error(`DELETE route ${route} not found`);
     return response as T;
   }
 
