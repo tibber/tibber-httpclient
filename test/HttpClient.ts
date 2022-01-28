@@ -1,5 +1,5 @@
 import test from 'ava';
-import { HttpClient, RequestException } from '../src/index';
+import { HttpClient, RequestException } from '../src';
 import { AbortController } from 'abort-controller';
 import { HTTPError } from 'got/dist/source';
 
@@ -22,7 +22,7 @@ test('basic GET request', async (t) => {
   t.is(response.id, 1);
 });
 
-test('GET request, return repsonse', async (t) => {
+test('GET request, return response', async (t) => {
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
   const response = await client.raw('posts/1', { method: 'GET' });
   t.is(response.statusCode, 200);
