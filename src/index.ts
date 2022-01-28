@@ -229,41 +229,60 @@ export class HttpClient implements IHttpClient {
   }
 }
 
-type HttpMethodCall = 'get' | 'post' | 'patch' | 'put' | 'delete';
+type HttpMethodCall = 'get' | 'post' | 'put' | 'patch' | 'delete';
+
+// this is a bug in ESLint or an issue with our ESLint setup
+// eslint-disable-next-line no-unused-vars
+type RoutePayloads = { [p in HttpMethodCall]?: Record<string, unknown> };
+
 export class TestHttpClient implements IHttpClient {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _routePayloads: Record<string, Record<string, any>>;
+  _routePayloads: RoutePayloads;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   calls: Record<HttpMethodCall, Record<string, any>>;
 
-  constructor(routePayloads: Record<string, Record<HttpMethodCall, unknown>>) {
+  constructor(routePayloads: RoutePayloads) {
     this._routePayloads = routePayloads;
     this.calls = { get: {}, post: {}, patch: {}, put: {}, delete: {} };
   }
 
   public async get<T>(route: string): Promise<T> {
-    const response = this._routePayloads.get[route];
-    return Promise.resolve(response);
+    // storing `undefined` here makes it non-obvious to verify (you have to use the `in` keyword)
+    // we don't want to potentially break people's test by changing it though
+    this.calls.get[route] = undefined;
+    const response = this._routePayloads.get?.[route];
+    if (response === undefined) throw new Error(`GET route ${route} not found`);
+    return Promise.resolve(response as T);
   }
 
   public async post<T>(route: string, data: Record<string, unknown>): Promise<T> {
     this.calls.post[route] = data || {};
-    return this._routePayloads.post[route];
+    const response = this._routePayloads.post?.[route];
+    if (response === undefined) throw new Error(`POST route ${route} not found`);
+    return response as T;
   }
 
   public async put<T>(route: string, data: Record<string, unknown>): Promise<T> {
     this.calls.put[route] = data || {};
-    return this._routePayloads.put[route];
+    const response = this._routePayloads.put?.[route];
+    if (response === undefined) throw new Error(`PUT route ${route} not found`);
+    return response as T;
   }
 
   public async patch<T>(route: string, data: Record<string, unknown>): Promise<T> {
     this.calls.patch[route] = data || {};
-    return this._routePayloads.patch[route];
+    const response = this._routePayloads.patch?.[route];
+    if (response === undefined) throw new Error(`PATCH route ${route} not found`);
+    return response as T;
   }
 
   public async delete<T>(route: string): Promise<T> {
+    // storing `undefined` here makes it non-obvious to verify (you have to use the `in` keyword)
+    // we don't want to potentially break people's test by changing it though
     this.calls.delete[route] = undefined;
-    return this._routePayloads.delete[route];
+    const response = this._routePayloads.delete?.[route];
+    if (response === undefined) throw new Error(`DELETE route ${route} not found`);
+    return response as T;
   }
 
   public resetCalls(): void {
@@ -278,6 +297,7 @@ export class CachedClient implements ICachedHttpClient {
   private _httpClient: IHttpClient;
   private _logger: Logger;
   private _cache: NodeCache;
+
   constructor(httpClient: HttpClient, logger: Logger, cache: NodeCache) {
     this._httpClient = httpClient;
     this._logger = logger;

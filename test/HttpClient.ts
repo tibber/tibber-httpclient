@@ -1,5 +1,5 @@
 import test from 'ava';
-import { HttpClient, RequestException } from '../src';
+import { HttpClient, RequestException, TestHttpClient } from '../src';
 import { AbortController } from 'abort-controller';
 import { HTTPError } from 'got/dist/source';
 
@@ -118,4 +118,54 @@ test('Create basic auth header', async (t) => {
       t.is(error.inner.options.headers.test, '123');
     }
   }
+});
+
+test('Can clear TestHttpClient calls', async (t) => {
+  const url = '/index';
+  const payload = { payload: 'payload' };
+  const response = { success: true };
+  const client = new TestHttpClient({
+    get: {
+      [url]: response
+    },
+    post: {
+      [url]: response
+    },
+    put: {
+      [url]: response
+    },
+    patch: {
+      [url]: response
+    },
+    delete: {
+      [url]: response
+    }
+  });
+  let res;
+  res = await client.get(url);
+  t.deepEqual(res, response);
+  t.deepEqual(client.calls.get[url], undefined);
+
+  res = await client.post(url, payload);
+  t.deepEqual(res, response);
+  t.deepEqual(client.calls.post[url], payload);
+
+  res = await client.put(url, payload);
+  t.deepEqual(res, response);
+  t.deepEqual(client.calls.put[url], payload);
+
+  res = await client.patch(url, payload);
+  t.deepEqual(res, response);
+  t.deepEqual(client.calls.patch[url], payload);
+
+  res = await client.delete(url);
+  t.deepEqual(res, response);
+  t.deepEqual(client.calls.delete[url], undefined);
+
+  client.resetCalls();
+  t.is(url in client.calls.get, false);
+  t.is(url in client.calls.post, false);
+  t.is(url in client.calls.put, false);
+  t.is(url in client.calls.patch, false);
+  t.is(url in client.calls.delete, false);
 });
