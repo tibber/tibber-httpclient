@@ -3,8 +3,11 @@ import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError,
 import { AbortSignal } from 'abort-controller';
 import NodeCache from 'node-cache';
 
-type GotOptions = Pick<Options, 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect' | 'path'>;
-interface RequestOptions extends GotOptions{
+type GotOptions = Pick<
+  Options,
+  'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect' | 'path'
+>;
+interface RequestOptions extends GotOptions {
   abortSignal?: AbortSignal;
   isForm?: boolean;
 }
@@ -56,14 +59,13 @@ type HttpClientInitParams = {
   logger?: Logger;
   config?: HttpClientConfig;
   options?: Options;
-}
+};
 export class HttpClient implements IHttpClient {
   got: Got;
   logger: Logger | undefined;
   prefixUrl: string | undefined;
 
   constructor(initParams?: HttpClientInitParams) {
-
     const addToHeader = (header: Record<string, string>) => {
       gotOptions.headers ??= header;
       gotOptions.headers = { ...gotOptions.headers, ...header };
@@ -80,9 +82,9 @@ export class HttpClient implements IHttpClient {
     // assemble default authorization header
     if (initParams?.config?.basicAuthUserName && initParams?.config?.basicAuthPassword) {
       addToHeader({
-        Authorization: `Basic ${Buffer.from(initParams?.config.basicAuthUserName + ':' + initParams?.config.basicAuthPassword).toString(
-          'base64'
-        )}`
+        Authorization: `Basic ${Buffer.from(
+          initParams?.config.basicAuthUserName + ':' + initParams?.config.basicAuthPassword
+        ).toString('base64')}`
       });
     } else if (initParams?.config?.bearerToken) {
       addToHeader({ Authorization: 'Bearer ' + initParams?.config.bearerToken });
@@ -101,21 +103,18 @@ export class HttpClient implements IHttpClient {
   }
 
   // set the method and decide to place the 'json' or 'form' property, or not when no data.
-  #processOptions = (method: Method, data: Record<string, unknown> | undefined, options?: RequestOptions): RequestOptions => {
-    const jsonOrForm = options?.isForm ?? false
-      ? 'form'
-      : data !== undefined && data !== null
-        ? 'json'
-        : undefined;
+  #processOptions = (
+    method: Method,
+    data: Record<string, unknown> | undefined,
+    options?: RequestOptions
+  ): RequestOptions => {
+    const jsonOrForm = options?.isForm ?? false ? 'form' : data !== undefined && data !== null ? 'json' : undefined;
     return {
       ...(options ?? {}),
-      ...(jsonOrForm !== undefined
-        ? {[jsonOrForm]: data}
-        : {}
-        ),
-        method
-      };
-  }
+      ...(jsonOrForm !== undefined ? { [jsonOrForm]: data } : {}),
+      method
+    };
+  };
 
   #request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
     const { abortSignal, ...gotOptions } = options ?? {};
@@ -174,38 +173,36 @@ export class HttpClient implements IHttpClient {
     return error;
   }
 
-
-
   async get<T>(path: string, options?: RequestOptions): Promise<T> {
-    const o = this.#processOptions( 'GET', undefined, options);
+    const o = this.#processOptions('GET', undefined, options);
     return this.#requestJson({
       path: path,
       options: o
     });
   }
   async post<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T> {
-    const o = this.#processOptions( 'POST', data, options);
+    const o = this.#processOptions('POST', data, options);
     return this.#requestJson({
       path: path,
       options: o
     });
   }
   async put<T>(path: string, data?: Record<string, unknown>, options?: RequestOptions): Promise<T> {
-    const o = this.#processOptions( 'PUT', data, options)
+    const o = this.#processOptions('PUT', data, options);
     return this.#requestJson({
       path: path,
       options: o
     });
   }
   async patch<T>(path: string, data?: Record<string, unknown>, options?: RequestOptions): Promise<T> {
-    const o = this.#processOptions( 'PATCH', data, options)
+    const o = this.#processOptions('PATCH', data, options);
     return this.#requestJson({
       path: path,
       options: o
     });
   }
   async delete(path: string, options?: RequestOptions): Promise<void> {
-    const o = this.#processOptions( 'DELETE', undefined, options)
+    const o = this.#processOptions('DELETE', undefined, options);
     await this.#requestJson({
       path: path,
       options: o
@@ -219,45 +216,45 @@ export class HttpClient implements IHttpClient {
    * @return {Response<unknown>}
    */
   async raw(path: string, options: RequestOptions): Promise<Response<unknown>> {
-      return this.got(path, options)
+    return this.got(path, options);
   }
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type HttpMethodCall = 'get' | 'post' | 'patch' | 'put' | 'delete';
 export class TestHttpClient implements IHttpClient {
-  _routePayloads: Record<string,Record<string, any>>
-  calls: Record<HttpMethodCall, Record<string, any>>
+  _routePayloads: Record<string, Record<string, any>>;
+  calls: Record<HttpMethodCall, Record<string, any>>;
 
-  constructor(routePayloads: Record<string,Record<HttpMethodCall, unknown>>) {
-      this._routePayloads = routePayloads;
-      this.calls = { get: {}, post: {}, patch: {}, put: {}, delete: {} };
+  constructor(routePayloads: Record<string, Record<HttpMethodCall, unknown>>) {
+    this._routePayloads = routePayloads;
+    this.calls = { get: {}, post: {}, patch: {}, put: {}, delete: {} };
   }
 
   public async get<T>(route: string): Promise<T> {
-      // this._routePayloads.get[route];
-      const response = this._routePayloads.get[route]
-      return Promise.resolve(response);
+    // this._routePayloads.get[route];
+    const response = this._routePayloads.get[route];
+    return Promise.resolve(response);
   }
 
   public async post<T>(route: string, data: Record<string, unknown>): Promise<T> {
-      this.calls.post[route] = data || {};
-      return this._routePayloads.post[route];
+    this.calls.post[route] = data || {};
+    return this._routePayloads.post[route];
   }
 
   public async put<T>(route: string, data: Record<string, unknown>): Promise<T> {
-      this.calls.put[route] = data || {};
-      return this._routePayloads.put[route];
+    this.calls.put[route] = data || {};
+    return this._routePayloads.put[route];
   }
 
   public async patch<T>(route: string, data: Record<string, unknown>): Promise<T> {
-      this.calls.patch[route] = data || {};
-      return this._routePayloads.patch[route];
+    this.calls.patch[route] = data || {};
+    return this._routePayloads.patch[route];
   }
 
   public async delete<T>(route: string): Promise<T> {
-      this.calls.delete[route] = undefined;
-      return this._routePayloads.delete[route];
+    this.calls.delete[route] = undefined;
+    return this._routePayloads.delete[route];
   }
 }
 
@@ -269,44 +266,46 @@ export class CachedClient implements ICachedHttpClient {
   private _logger: Logger;
   private _cache: NodeCache;
   constructor(httpClient: HttpClient, logger: Logger, cache: NodeCache) {
-      this._httpClient = httpClient;
-      this._logger = logger;
-      this._cache = cache;
+    this._httpClient = httpClient;
+    this._logger = logger;
+    this._cache = cache;
   }
 
   private async _get<T>(route: string, noCache: boolean): Promise<T> {
-
-      if (!noCache) {
-          const cached = this._cache.get<T>(route);
-          if (cached) {
-              this._logger && this._logger.info(`returning cached result for route "${route}"`);
-              return cached;
-          }
+    if (!noCache) {
+      const cached = this._cache.get<T>(route);
+      if (cached) {
+        this._logger && this._logger.info(`returning cached result for route "${route}"`);
+        return cached;
       }
-      const result = await this._httpClient.get<T>(route);
-      this._cache.set(route, result);
-      return result;
+    }
+    const result = await this._httpClient.get<T>(route);
+    this._cache.set(route, result);
+    return result;
   }
 
-  public async get<T>(route: string): Promise<T> { return this._get(route, false); }
-  public async getNoCache<T>(route: string): Promise<T> { return this._get(route, true); }
+  public async get<T>(route: string): Promise<T> {
+    return this._get(route, false);
+  }
+  public async getNoCache<T>(route: string): Promise<T> {
+    return this._get(route, true);
+  }
 
   public async post<T>(route: string, data?: Record<string, unknown>): Promise<T> {
-      return await this._httpClient.post<T>(route, data);
+    return await this._httpClient.post<T>(route, data);
   }
 
   public async put<T>(route: string, data?: Record<string, unknown>): Promise<T> {
-      return await this._httpClient.put<T>(route, data);
+    return await this._httpClient.put<T>(route, data);
   }
 
   public async patch<T>(route: string, data?: Record<string, unknown>): Promise<T> {
-      return await this._httpClient.patch<T>(route, data);
+    return await this._httpClient.patch<T>(route, data);
   }
 
   public async delete(route: string): Promise<void> {
-      return await this._httpClient.delete(route);
+    return await this._httpClient.delete(route);
   }
 }
 
 /* eslint-enable @typescript-eslint/no-explicit-any */
-

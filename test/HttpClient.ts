@@ -12,9 +12,9 @@ interface Todo {
 
 test('Instantiate client without init parameters', async (t) => {
   const client = new HttpClient();
-  const response: Todo = await client.get('https://jsonplaceholder.typicode.com/posts/1')
-  t.is(response.userId, 1)
-})
+  const response: Todo = await client.get('https://jsonplaceholder.typicode.com/posts/1');
+  t.is(response.userId, 1);
+});
 
 test('basic GET request', async (t) => {
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
@@ -24,7 +24,7 @@ test('basic GET request', async (t) => {
 
 test('GET request, return repsonse', async (t) => {
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
-  const response = await client.raw('posts/1', { method: 'GET'});
+  const response = await client.raw('posts/1', { method: 'GET' });
   t.is(response.statusCode, 200);
 });
 
@@ -35,7 +35,7 @@ test('POST', async (t) => {
     body: 'quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto'
   };
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
-  const response: Todo = await client.post('posts', data );
+  const response: Todo = await client.post('posts', data);
   t.is(response.id, 101);
 });
 
@@ -46,7 +46,7 @@ test('POST form url encoded', async (t) => {
     body: 'quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto'
   };
   const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
-  const response: Todo = await client.post('posts', data, {isForm: true});
+  const response: Todo = await client.post('posts', data, { isForm: true });
   t.is(response.id, 101);
 });
 
