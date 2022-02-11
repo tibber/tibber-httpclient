@@ -32,11 +32,11 @@ export interface HttpClientConfig {
 }
 
 export class RequestException extends Error {
-  code;
+  statusCode;
 
   stack;
 
-  inner;
+  innerError;
 
   constructor({
     message,
@@ -50,9 +50,9 @@ export class RequestException extends Error {
     stack?: string;
   }) {
     super(message);
-    this.code = statusCode;
+    this.statusCode = statusCode;
     this.stack = stack;
-    this.inner = innerError;
+    this.innerError = innerError;
   }
 }
 

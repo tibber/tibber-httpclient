@@ -80,7 +80,7 @@ test('Canceling request with AbortSignal', async (t) => {
     });
   } catch (error) {
     if (error instanceof RequestException) {
-      t.is(error.inner.name, 'CancelError');
+      t.is(error.innerError.name, 'CancelError');
     }
   }
 });
@@ -95,8 +95,8 @@ test('Error request', async (t) => {
     await client.get('status/400');
   } catch (error) {
     if (error instanceof RequestException) {
-      t.is(error.inner.name, 'HTTPError');
-      t.is(error.code, 400);
+      t.is(error.innerError.name, 'HTTPError');
+      t.is(error.statusCode, 400);
     }
   }
 });
@@ -112,10 +112,10 @@ test('Create basic auth header', async (t) => {
     // trigger error, to get access to underlying request and check header
     await client.get('status/400', { headers: { nonHeader: 'abc' } });
   } catch (error) {
-    if (error instanceof RequestException && error.inner instanceof HTTPError) {
-      t.is(error.inner.options.headers.authorization, 'Basic bXluYW1lOjEyMzQ=');
-      t.is(error.inner.options.headers.nonheader, 'abc');
-      t.is(error.inner.options.headers.test, '123');
+    if (error instanceof RequestException && error.innerError instanceof HTTPError) {
+      t.is(error.innerError.options.headers.authorization, 'Basic bXluYW1lOjEyMzQ=');
+      t.is(error.innerError.options.headers.nonheader, 'abc');
+      t.is(error.innerError.options.headers.test, '123');
     }
   }
 });
