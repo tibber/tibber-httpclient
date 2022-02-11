@@ -13,9 +13,9 @@ interface RequestOptions extends GotOptions {
 
 export interface IHttpClient {
   get<T>(path: string, options?: Omit<RequestOptions, 'json'>): Promise<T>;
-  post<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
-  patch<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
-  put<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
+  post<T>(path: string, data?: Record<string, any>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
+  patch<T>(path: string, data?: Record<string, any>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
+  put<T>(path: string, data?: Record<string, any>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
   delete(path: string, options?: Omit<RequestOptions, 'json'>): Promise<void>;
 }
 
@@ -172,7 +172,7 @@ export class HttpClient implements IHttpClient {
     });
   }
 
-  async post<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T> {
+  async post<T>(path: string, data?: Record<string, any>, options?: Omit<RequestOptions, 'json'>): Promise<T> {
     const o = processOptions('POST', data, options);
     return this.#requestJson({
       path,
@@ -180,7 +180,7 @@ export class HttpClient implements IHttpClient {
     });
   }
 
-  async put<T>(path: string, data?: Record<string, unknown>, options?: RequestOptions): Promise<T> {
+  async put<T>(path: string, data?: Record<string, any>, options?: RequestOptions): Promise<T> {
     const o = processOptions('PUT', data, options);
     return this.#requestJson({
       path,
@@ -188,7 +188,7 @@ export class HttpClient implements IHttpClient {
     });
   }
 
-  async patch<T>(path: string, data?: Record<string, unknown>, options?: RequestOptions): Promise<T> {
+  async patch<T>(path: string, data?: Record<string, any>, options?: RequestOptions): Promise<T> {
     const o = processOptions('PATCH', data, options);
     return this.#requestJson({
       path,
@@ -311,7 +311,7 @@ export class CachedClient implements ICachedHttpClient {
     return this._get(route, true);
   }
 
-  public async post<T>(route: string, data?: Record<string, unknown>): Promise<T> {
+  public async post<T>(route: string, data?: Record<string, any>): Promise<T> {
     return this._httpClient.post<T>(route, data);
   }
 
@@ -331,7 +331,7 @@ export class CachedClient implements ICachedHttpClient {
 // set the method and decide to place the 'json' or 'form' property, or not when no data.
 const processOptions = (
   method: Method,
-  data: Record<string, unknown> | undefined,
+  data: Record<string, any> | undefined,
   options?: RequestOptions
 ): RequestOptions => {
   let jsonOrForm: string | undefined;

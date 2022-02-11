@@ -1,6 +1,6 @@
 {
   "name": "tibber-httpclient",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "main": "./dist/src/index.js",
   "types": "./dist/src/src/index.d.ts",
   "author": "Tibber",
