@@ -144,7 +144,7 @@ export class HttpClient implements IHttpClient {
       this.logger?.error(
         '\n' +
           '--------------------------------------------------------------------\n' +
-          `${method} ${this.prefixUrl}${path} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
+          `${method} ${this.prefixUrl}/${path} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
           `headers: ${JSON.stringify(headers)}\n` +
           `request-options: ${JSON.stringify({ ...options, context }).replace(/\\n/g, '')}\n` +
           `error:${error.message}\n` +
@@ -154,7 +154,7 @@ export class HttpClient implements IHttpClient {
     }
     if (error instanceof Error) {
       return new RequestException({
-        message: error.message,
+        message: `${this.prefixUrl}/${path} ${error.message}`,
         statusCode: code,
         innerError: error,
         stack: error?.stack
