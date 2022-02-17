@@ -108,8 +108,8 @@ export class HttpClient implements IHttpClient {
 
   #request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
     const { abortSignal, ...gotOptions } = options ?? {};
-    const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
-    const responsePromise = this.got(sanitizedPath, { ...gotOptions });
+
+    const responsePromise = this.got(path, { ...gotOptions });
 
     if (abortSignal) {
       abortSignal.addEventListener('abort', () => {
@@ -121,15 +121,16 @@ export class HttpClient implements IHttpClient {
   }
 
   async #requestJson<T>({ path, options }: { path: string; options: RequestOptions }): Promise<T> {
+    const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
     try {
-      const responsePromise = this.#request(path, options);
+      const responsePromise = this.#request(sanitizedPath, options);
       const [{ url, statusCode, timings }, json] = await Promise.all([responsePromise, responsePromise.json<T>()]);
 
       this.logger?.info(`${options.method} ${url} ${statusCode} ${new Date().getTime() - timings.start} ms`);
       this.logger?.debug('request-options', JSON.stringify(options).replace(/\\n/g, ''));
       return json;
     } catch (error) {
-      throw this.#logAndThrowError({ error, path, options });
+      throw this.#logAndThrowError({ error, path: sanitizedPath, options });
     }
   }
 
