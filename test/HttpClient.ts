@@ -120,6 +120,25 @@ test('Create basic auth header', async (t) => {
   }
 });
 
+test('Create header from headerFunc', async (t) => {
+  const client = new HttpClient({
+    prefixUrl: 'https://httpbin.org',
+    config: { basicAuthPassword: '1234', basicAuthUserName: 'myname' },
+    headerFunc: () => ({ test: '123' }),
+  });
+  t.plan(3);
+  try {
+    // trigger error, to get access to underlying request and check header
+    await client.get('status/400', { headers: { nonHeader: 'abc' } });
+  } catch (error) {
+    if (error instanceof RequestException && error.innerError instanceof HTTPError) {
+      t.is(error.innerError.options.headers.authorization, 'Basic bXluYW1lOjEyMzQ=');
+      t.is(error.innerError.options.headers.nonheader, 'abc');
+      t.is(error.innerError.options.headers.test, '123');
+    }
+  }
+});
+
 test('Can clear TestHttpClient calls', async (t) => {
   const url = '/index';
   const payload = { payload: 'payload' };
