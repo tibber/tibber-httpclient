@@ -71,6 +71,7 @@ export class HttpClient implements IHttpClient {
   logger: Logger | undefined;
 
   prefixUrl: string | undefined;
+
   headerFunc: HeaderFunction | undefined;
 
   constructor(initParams?: HttpClientInitParams) {
@@ -187,9 +188,9 @@ export class HttpClient implements IHttpClient {
     } else {
       jsonOrForm = undefined;
     }
-    options = { ...options, headers: { ...options?.headers, ...this.headerFunc?.() } };
+    const optionsWithComputedHeaders = { ...options, headers: { ...options?.headers, ...this.headerFunc?.() } };
     return {
-      ...(options ?? {}),
+      ...(optionsWithComputedHeaders ?? {}),
       ...(jsonOrForm !== undefined ? { [jsonOrForm]: data } : {}),
       method
     };
