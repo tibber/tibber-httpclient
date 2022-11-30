@@ -1,4 +1,4 @@
-import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError, Method } from 'got/dist/source';
+import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError, Method, Headers } from 'got/dist/source';
 import { AbortSignal } from 'abort-controller';
 import NodeCache from 'node-cache';
 
@@ -31,6 +31,8 @@ export interface HttpClientConfig {
   bearerToken?: string;
 }
 
+export type HeaderFunction = () => Headers;
+
 export class RequestException extends Error {
   statusCode;
 
@@ -61,6 +63,7 @@ type HttpClientInitParams = {
   logger?: Logger;
   config?: HttpClientConfig;
   options?: Options;
+  headerFunc?: HeaderFunction;
 };
 export class HttpClient implements IHttpClient {
   got: Got;
@@ -68,6 +71,8 @@ export class HttpClient implements IHttpClient {
   logger: Logger | undefined;
 
   prefixUrl: string | undefined;
+
+  headerFunc: HeaderFunction | undefined;
 
   constructor(initParams?: HttpClientInitParams) {
     const addToHeader = (header: Record<string, string>) => {
@@ -97,6 +102,10 @@ export class HttpClient implements IHttpClient {
     // initialize logger
     if (initParams?.logger) {
       this.logger = initParams?.logger;
+    }
+
+    if (initParams?.headerFunc) {
+      this.headerFunc = initParams?.headerFunc;
     }
 
     // save prefixUrl
@@ -144,13 +153,13 @@ export class HttpClient implements IHttpClient {
 
       this.logger?.error(
         '\n' +
-          '--------------------------------------------------------------------\n' +
-          `${method} ${this.prefixUrl}/${path} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
-          `headers: ${JSON.stringify(headers)}\n` +
-          `request-options: ${JSON.stringify({ ...options, context }).replace(/\\n/g, '')}\n` +
-          `error:${error.message}\n` +
-          `stack:${error.stack}\n` +
-          '--------------------------------------------------------------------'
+        '--------------------------------------------------------------------\n' +
+        `${method} ${this.prefixUrl}/${path} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
+        `headers: ${JSON.stringify(headers)}\n` +
+        `request-options: ${JSON.stringify({ ...options, context }).replace(/\\n/g, '')}\n` +
+        `error:${error.message}\n` +
+        `stack:${error.stack}\n` +
+        '--------------------------------------------------------------------'
       );
     }
     if (error instanceof Error) {
@@ -165,8 +174,30 @@ export class HttpClient implements IHttpClient {
     return error;
   }
 
+  // set the method and decide to place the 'json' or 'form' property, or not when no data.
+  #processOptions = (
+    method: Method,
+    data: Record<string, any> | undefined,
+    options?: RequestOptions
+  ): RequestOptions => {
+    let jsonOrForm: string | undefined;
+    if (options?.isForm) {
+      jsonOrForm = 'form';
+    } else if (data !== undefined && data !== null) {
+      jsonOrForm = 'json';
+    } else {
+      jsonOrForm = undefined;
+    }
+    const optionsWithComputedHeaders = { ...options, headers: { ...options?.headers, ...this.headerFunc?.() } };
+    return {
+      ...(optionsWithComputedHeaders ?? {}),
+      ...(jsonOrForm !== undefined ? { [jsonOrForm]: data } : {}),
+      method
+    };
+  };
+
   async get<T>(path: string, options?: RequestOptions): Promise<T> {
-    const o = processOptions('GET', undefined, options);
+    const o = this.#processOptions('GET', undefined, options);
     return this.#requestJson({
       path,
       options: o
@@ -174,7 +205,7 @@ export class HttpClient implements IHttpClient {
   }
 
   async post<T>(path: string, data?: Record<string, any>, options?: Omit<RequestOptions, 'json'>): Promise<T> {
-    const o = processOptions('POST', data, options);
+    const o = this.#processOptions('POST', data, options);
     return this.#requestJson({
       path,
       options: o
@@ -182,7 +213,7 @@ export class HttpClient implements IHttpClient {
   }
 
   async put<T>(path: string, data?: Record<string, any>, options?: RequestOptions): Promise<T> {
-    const o = processOptions('PUT', data, options);
+    const o = this.#processOptions('PUT', data, options);
     return this.#requestJson({
       path,
       options: o
@@ -190,7 +221,7 @@ export class HttpClient implements IHttpClient {
   }
 
   async patch<T>(path: string, data?: Record<string, any>, options?: RequestOptions): Promise<T> {
-    const o = processOptions('PATCH', data, options);
+    const o = this.#processOptions('PATCH', data, options);
     return this.#requestJson({
       path,
       options: o
@@ -198,7 +229,7 @@ export class HttpClient implements IHttpClient {
   }
 
   async delete(path: string, options?: RequestOptions): Promise<void> {
-    const o = processOptions('DELETE', undefined, options);
+    const o = this.#processOptions('DELETE', undefined, options);
     await this.#requestJson({
       path,
       options: o
@@ -328,24 +359,3 @@ export class CachedClient implements ICachedHttpClient {
     return this._httpClient.delete(route);
   }
 }
-
-// set the method and decide to place the 'json' or 'form' property, or not when no data.
-const processOptions = (
-  method: Method,
-  data: Record<string, any> | undefined,
-  options?: RequestOptions
-): RequestOptions => {
-  let jsonOrForm: string | undefined;
-  if (options?.isForm) {
-    jsonOrForm = 'form';
-  } else if (data !== undefined && data !== null) {
-    jsonOrForm = 'json';
-  } else {
-    jsonOrForm = undefined;
-  }
-  return {
-    ...(options ?? {}),
-    ...(jsonOrForm !== undefined ? { [jsonOrForm]: data } : {}),
-    method
-  };
-};
