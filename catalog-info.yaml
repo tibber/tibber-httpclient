@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: tibber-httpclient
+  annotations:
+    github.com/project-slug: tibber/tibber-httpclient
+  tags:
+    - typescript
+spec:
+  type: library
+  lifecycle: production
