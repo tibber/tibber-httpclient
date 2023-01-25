@@ -1,4 +1,13 @@
-import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError, Method, Headers } from 'got/dist/source';
+import got, {
+  Response,
+  Got,
+  Options,
+  CancelableRequest,
+  HTTPError,
+  CancelError,
+  Method,
+  Headers
+} from 'got/dist/source';
 import { AbortSignal } from 'abort-controller';
 import NodeCache from 'node-cache';
 
@@ -134,8 +143,12 @@ export class HttpClient implements IHttpClient {
     try {
       const responsePromise = this.#request(sanitizedPath, options);
       const [{ url, statusCode, timings }, json] = await Promise.all([responsePromise, responsePromise.json<T>()]);
-
-      this.logger?.info(`${options.method} ${url} ${statusCode} ${new Date().getTime() - timings.start} ms`);
+      const loggingPayload = `${options.method} ${url} ${statusCode} ${new Date().getTime() - timings.start} ms`;
+      if (options.method === 'GET') {
+        this.logger?.debug(loggingPayload);
+      } else {
+        this.logger?.info(loggingPayload);
+      }
       this.logger?.debug('request-options', JSON.stringify(options).replace(/\\n/g, ''));
       return json;
     } catch (error) {
@@ -153,13 +166,13 @@ export class HttpClient implements IHttpClient {
 
       this.logger?.error(
         '\n' +
-        '--------------------------------------------------------------------\n' +
-        `${method} ${this.prefixUrl}/${path} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
-        `headers: ${JSON.stringify(headers)}\n` +
-        `request-options: ${JSON.stringify({ ...options, context }).replace(/\\n/g, '')}\n` +
-        `error:${error.message}\n` +
-        `stack:${error.stack}\n` +
-        '--------------------------------------------------------------------'
+          '--------------------------------------------------------------------\n' +
+          `${method} ${this.prefixUrl}/${path} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
+          `headers: ${JSON.stringify(headers)}\n` +
+          `request-options: ${JSON.stringify({ ...options, context }).replace(/\\n/g, '')}\n` +
+          `error:${error.message}\n` +
+          `stack:${error.stack}\n` +
+          '--------------------------------------------------------------------'
       );
     }
     if (error instanceof Error) {
@@ -325,7 +338,7 @@ export class CachedClient implements ICachedHttpClient {
     if (!noCache) {
       const cached = this._cache.get<T>(route);
       if (cached) {
-        this._logger?.info(`returning cached result for route "${route}"`);
+        this._logger?.debug(`returning cached result for route "${route}"`);
 
         return cached;
       }
