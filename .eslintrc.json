@@ -15,21 +15,36 @@
     "ecmaVersion": 2021,
     "sourceType": "module",
     "project": "./tsconfig.json",
-    "extraFileExtensions": [".json"]
+    "extraFileExtensions": [
+      ".json"
+    ]
   },
-  "plugins": ["@typescript-eslint"],
+  "plugins": [
+    "@typescript-eslint"
+  ],
   "rules": {
     "json/*": ["error", { "allowComments": true }],
     "max-classes-per-file": "off",
     "@typescript-eslint/no-use-before-define": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^_",
+        "argsIgnorePattern": "^_",
+        "destructuredArrayIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
     // normally this is a good rule, but since this property has been exposed, let's not potentially break people
     "no-underscore-dangle": "off",
+
+    "object-curly-spacing": "error",
     "no-return-await": "off",
     "@typescript-eslint/return-await": "off",
-    "object-curly-spacing": "error",
 
     // airbnb terrible defaults
     "no-restricted-syntax": ["error", "ForInStatement", "LabeledStatement", "WithStatement"],
     "no-continue": "off"
   }
 }
+

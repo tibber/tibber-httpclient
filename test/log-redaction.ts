@@ -1,5 +1,5 @@
 import test from 'ava';
-import { redact, redactSensitiveHeaders, redactSensitiveProps } from '../src';
+import { redact, redactSensitiveHeaders, redactSensitiveProps } from '../src/loggers';
 
 for (const [input, expected] of [
   [{ ignoreMe: 'ignoreMe' }, { ignoreMe: 'ignoreMe' }],
@@ -20,15 +20,15 @@ for (const [input, expected] of [
   [{ clientSecret: 's' }, { clientSecret: '<redacted>' }],
   [{ ClientSecret: 's' }, { ClientSecret: '<redacted>' }],
   [{ token: 't' }, { token: '<redacted>' }],
-  [{ Token: 't' }, { Token: '<redacted>' }]
+  [{ Token: 't' }, { Token: '<redacted>' }],
 ]) {
-  test(`should redact '${[Object.keys(input)]}' from 'json'`, (t) => {
+  test(`redact '${[Object.keys(input)]}' from 'json'`, (t) => {
     const actual = { json: input };
     redactSensitiveProps(actual);
     t.deepEqual(actual.json, expected);
   });
 
-  test(`should redact '${[Object.keys(input)]}' from 'form'`, (t) => {
+  test(`redact '${[Object.keys(input)]}' from 'form'`, (t) => {
     const actual = { form: input };
     redactSensitiveProps(actual);
     t.deepEqual(actual.form, expected);
@@ -37,9 +37,9 @@ for (const [input, expected] of [
 
 for (const [input, expected] of [
   [{ authorization: 'a' }, { authorization: '<redacted>' }],
-  [{ Authorization: 'a' }, { Authorization: '<redacted>' }]
+  [{ Authorization: 'a' }, { Authorization: '<redacted>' }],
 ]) {
-  test(`should redact '${[Object.keys(input)]}' from headers`, (t) => {
+  test(`redact '${[Object.keys(input)]}' from headers`, (t) => {
     const actual = { headers: input };
     redactSensitiveHeaders(actual);
     t.deepEqual(actual.headers, expected);
@@ -49,20 +49,20 @@ for (const [input, expected] of [
 test('should deep clone options', (t) => {
   const options = {
     headers: {
-      authorization: 'a'
+      authorization: 'a',
     },
     json: {
-      password: 'p'
-    }
+      password: 'p',
+    },
   };
   const actual = redact(options);
   t.not(actual, options);
   t.deepEqual(actual, {
     headers: {
-      authorization: '<redacted>'
+      authorization: '<redacted>',
     },
     json: {
-      password: '<redacted>'
-    }
+      password: '<redacted>',
+    },
   });
 });
