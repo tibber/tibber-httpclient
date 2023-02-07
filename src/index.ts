@@ -211,7 +211,7 @@ export class HttpClient implements IHttpClient {
 
   async get<T>(path: string, options?: RequestOptions): Promise<T> {
     const o = this.#processOptions('GET', undefined, options);
-    return this.#requestJson({
+    return await this.#requestJson({
       path,
       options: o
     });
@@ -219,7 +219,7 @@ export class HttpClient implements IHttpClient {
 
   async post<T>(path: string, data?: Record<string, any>, options?: Omit<RequestOptions, 'json'>): Promise<T> {
     const o = this.#processOptions('POST', data, options);
-    return this.#requestJson({
+    return await this.#requestJson({
       path,
       options: o
     });
@@ -227,7 +227,7 @@ export class HttpClient implements IHttpClient {
 
   async put<T>(path: string, data?: Record<string, any>, options?: RequestOptions): Promise<T> {
     const o = this.#processOptions('PUT', data, options);
-    return this.#requestJson({
+    return await this.#requestJson({
       path,
       options: o
     });
@@ -235,7 +235,7 @@ export class HttpClient implements IHttpClient {
 
   async patch<T>(path: string, data?: Record<string, any>, options?: RequestOptions): Promise<T> {
     const o = this.#processOptions('PATCH', data, options);
-    return this.#requestJson({
+    return await this.#requestJson({
       path,
       options: o
     });
@@ -257,7 +257,7 @@ export class HttpClient implements IHttpClient {
    * @return {Response<unknown>}
    */
   async raw(path: string, options: RequestOptions): Promise<Response<unknown>> {
-    return this.got(path, options);
+    return await this.got(path, options);
   }
 }
 
@@ -349,26 +349,26 @@ export class CachedClient implements ICachedHttpClient {
   }
 
   public async get<T>(route: string): Promise<T> {
-    return this._get(route, false);
+    return await this._get(route, false);
   }
 
   public async getNoCache<T>(route: string): Promise<T> {
-    return this._get(route, true);
+    return await this._get(route, true);
   }
 
   public async post<T>(route: string, data?: Record<string, any>): Promise<T> {
-    return this._httpClient.post<T>(route, data);
+    return await this._httpClient.post<T>(route, data);
   }
 
   public async put<T>(route: string, data?: Record<string, unknown>): Promise<T> {
-    return this._httpClient.put<T>(route, data);
+    return await this._httpClient.put<T>(route, data);
   }
 
   public async patch<T>(route: string, data?: Record<string, unknown>): Promise<T> {
-    return this._httpClient.patch<T>(route, data);
+    return await this._httpClient.patch<T>(route, data);
   }
 
   public async delete(route: string): Promise<void> {
-    return this._httpClient.delete(route);
+    return await this._httpClient.delete(route);
   }
 }
