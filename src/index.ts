@@ -414,15 +414,15 @@ export const redactSensitiveProps = (options: RequestOptions) => {
 };
 
 const Sensitive = {
-  headers: [/[aA]uthorization/],
+  headers: [
+      /authorization/i
+  ],
   props: [
-    /[pP]ass(word)?/,
-    /[eE]mail/,
-    /[tT]oken/,
-    /[sS]ecret/,
-    /[cC]lient_?[iI]d/,
-    /[cC]lient_?[sS]ecret/,
-    /[uU]ser(name)?/,
-    /[aA]uthorization/
-  ]
+      /pass(word)?/i,
+      /email/i,
+      /token/i,
+      /secret/i,
+      /client_?id/i,
+      /client_?secret/i,
+      /user(name)?/i]
 };
