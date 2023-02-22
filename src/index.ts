@@ -397,12 +397,7 @@ export const redactSensitiveHeaders = (options: RequestOptions) => {
 };
 
 export const redactSensitiveProps = (options: RequestOptions) => {
-  let jsonOrForm;
-  if ('json' in options) {
-    jsonOrForm = options.json;
-  } else if ('form' in options) {
-    jsonOrForm = options.form;
-  }
+  const jsonOrForm = options.json ?? options.form;
   if (jsonOrForm === undefined) return;
 
   for (const prop of Object.keys(jsonOrForm)) {
