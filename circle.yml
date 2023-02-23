@@ -16,6 +16,7 @@ jobs:
           name: Build Package
           command: |
             yarn
+            yarn test
             yarn build
       - run:
           name: Deploy Package
