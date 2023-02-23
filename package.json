@@ -37,6 +37,7 @@
   "dependencies": {
     "abort-controller": "^3.0.0",
     "eslint": "^8.1.0",
+    "fast-copy": "^3.0.1",
     "got": "^11.8.5",
     "node-cache": "^5.1.2"
   }

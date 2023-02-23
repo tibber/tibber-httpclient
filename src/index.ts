@@ -10,6 +10,7 @@ import got, {
 } from 'got/dist/source';
 import { AbortSignal } from 'abort-controller';
 import NodeCache from 'node-cache';
+import copy from 'fast-copy';
 
 type GotOptions = Pick<
   Options,
@@ -74,6 +75,7 @@ type HttpClientInitParams = {
   options?: Options;
   headerFunc?: HeaderFunction;
 };
+
 export class HttpClient implements IHttpClient {
   got: Got;
 
@@ -149,7 +151,8 @@ export class HttpClient implements IHttpClient {
       } else {
         this.logger?.info(loggingPayload);
       }
-      this.logger?.debug('request-options', JSON.stringify(options).replace(/\\n/g, ''));
+      const redactedOptions = redact(options);
+      this.logger?.debug('request-options', JSON.stringify(redactedOptions).replace(/\\n/g, ''));
       return json;
     } catch (error) {
       throw this.#logAndThrowError({ error, path: sanitizedPath, options });
@@ -164,12 +167,13 @@ export class HttpClient implements IHttpClient {
       const duration = err && end && start && (err ?? end) - start;
       code = error.response?.statusCode ?? error.code;
 
+      const redactedOptions = redact(options);
       this.logger?.error(
         '\n' +
           '--------------------------------------------------------------------\n' +
           `${method} ${this.prefixUrl}/${path} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
           `headers: ${JSON.stringify(headers)}\n` +
-          `request-options: ${JSON.stringify({ ...options, context }).replace(/\\n/g, '')}\n` +
+          `request-options: ${JSON.stringify({ ...redactedOptions, context }).replace(/\\n/g, '')}\n` +
           `error:${error.message}\n` +
           `stack:${error.stack}\n` +
           '--------------------------------------------------------------------'
@@ -372,3 +376,48 @@ export class CachedClient implements ICachedHttpClient {
     return await this._httpClient.delete(route);
   }
 }
+
+export const redact = (options: RequestOptions) => {
+  const clone = copy(options);
+  redactSensitiveHeaders(clone);
+  redactSensitiveProps(clone);
+  return clone;
+};
+
+export const redactSensitiveHeaders = (options: RequestOptions) => {
+  if (options.headers === undefined) return;
+
+  for (const prop of Object.keys(options.headers ?? {})) {
+    for (const propMatch of Sensitive.headers) {
+      if (!propMatch.test(prop)) continue;
+      // eslint-disable-next-line no-param-reassign
+      options.headers[prop] = '<redacted>';
+    }
+  }
+};
+
+export const redactSensitiveProps = (options: RequestOptions) => {
+  const jsonOrForm = options.json ?? options.form;
+  if (jsonOrForm === undefined) return;
+
+  for (const prop of Object.keys(jsonOrForm)) {
+    for (const propMatch of Sensitive.props) {
+      if (!propMatch.test(prop)) continue;
+      jsonOrForm[prop] = '<redacted>';
+    }
+  }
+};
+
+const Sensitive = {
+  headers: [
+      /authorization/i
+  ],
+  props: [
+      /pass(word)?/i,
+      /email/i,
+      /token/i,
+      /secret/i,
+      /client_?id/i,
+      /client_?secret/i,
+      /user(name)?/i]
+};
