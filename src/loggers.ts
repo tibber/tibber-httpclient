@@ -50,7 +50,7 @@ export class GenericLogger implements HttpLogger {
     this.#logger.error(
       '\n' +
         '--------------------------------------------------------------------\n' +
-        `[${method}] ${requestUrl} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
+        `${method} ${requestUrl} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
         `headers: ${JSON.stringify(headers)}\n` +
         `request-options: ${JSON.stringify({ ...redactedOptions, context }).replace(/\\n/g, '')}\n` +
         `error:${error.message}\n` +
