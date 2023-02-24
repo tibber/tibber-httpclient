@@ -69,8 +69,8 @@ export class PinoLogger implements HttpLogger {
 
   logSuccess(res: Response): void {
     const { request: req, timings } = res;
-    const logLevelToInvoke = req.options.method === 'GET' ? 'debug' : 'info';
-    this.#logger[logLevelToInvoke]({
+    const level = req.options.method === 'GET' ? 'debug' : 'info';
+    this.#logger[level]({
       req: {
         ...req,
         method: req.options?.method,

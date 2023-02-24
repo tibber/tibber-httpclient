@@ -86,7 +86,6 @@ export class HttpClient implements IHttpClient {
       gotOptions.headers = { ...gotOptions.headers, ...header };
     };
 
-    // initialize all default options for this client
     const gotOptions: Options = {
       retry: 0,
       ...initParams?.options,
@@ -94,7 +93,6 @@ export class HttpClient implements IHttpClient {
       prefixUrl: initParams?.prefixUrl,
     };
 
-    // assemble default authorization header
     if (initParams?.config?.basicAuthUserName && initParams?.config?.basicAuthPassword) {
       addToHeader({
         Authorization: `Basic ${Buffer.from(
@@ -105,7 +103,6 @@ export class HttpClient implements IHttpClient {
       addToHeader({ Authorization: `Bearer ${initParams?.config.bearerToken}` });
     }
 
-    // initialize logger
     if (initParams?.logger) {
       this.#logger =
         initParams.logger.constructor?.name === 'Pino'
@@ -117,16 +114,12 @@ export class HttpClient implements IHttpClient {
       this.#headerFunc = initParams?.headerFunc;
     }
 
-    // save prefixUrl
     this.#prefixUrl = initParams?.prefixUrl;
-
-    // initialize got and extend it with default options
     this.#got = got.extend(gotOptions);
   }
 
   #request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
     const { abortSignal, ...gotOptions } = options ?? {};
-
     const responsePromise = this.#got(path, { ...gotOptions });
 
     if (abortSignal) {
@@ -158,11 +151,12 @@ export class HttpClient implements IHttpClient {
     }
 
     if (error instanceof Error) {
+      const { message, stack } = error;
       return new RequestException({
-        message: `${this.#prefixUrl}/${path} ${error.message}`,
+        message: `${this.#prefixUrl}/${path} ${message}`,
         statusCode: code,
         innerError: error,
-        stack: error?.stack,
+        stack,
       });
     }
 
@@ -180,10 +174,14 @@ export class HttpClient implements IHttpClient {
       jsonOrForm = 'form';
     } else if (data !== undefined && data !== null) {
       jsonOrForm = 'json';
-    } else {
-      jsonOrForm = undefined;
     }
-    const optionsWithComputedHeaders = { ...options, headers: { ...options?.headers, ...this.#headerFunc?.() } };
+    const optionsWithComputedHeaders = {
+      ...options,
+      headers: {
+        ...options?.headers,
+        ...this.#headerFunc?.(),
+      },
+    };
     return {
       ...(optionsWithComputedHeaders ?? {}),
       ...(jsonOrForm !== undefined ? { [jsonOrForm]: data } : {}),
@@ -245,13 +243,10 @@ export class HttpClient implements IHttpClient {
 
 type HttpMethodCall = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
-// this is a bug in ESLint or an issue with our ESLint setup
-// eslint-disable-next-line no-unused-vars
 type RoutePayloads = { [p in HttpMethodCall]?: Record<string, unknown> };
 
 export class TestHttpClient implements IHttpClient {
   // tests may depend on this for verifying calls, so do not make it truly private
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _routePayloads: RoutePayloads;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -322,7 +317,6 @@ export class CachedClient implements ICachedHttpClient {
       const cached = this.#cache.get<T>(route);
       if (cached) {
         this.#logger?.debug(`returning cached result for route "${route}"`);
-
         return cached;
       }
     }
