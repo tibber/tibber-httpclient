@@ -1,5 +1,6 @@
 import { CancelError, HTTPError, Options, Response } from 'got';
 import copy from 'fast-copy';
+import { genericLogRedactionKeyPatterns } from './log-redaction';
 
 export interface Logger {
   info(...args: unknown[]): void;
@@ -115,7 +116,7 @@ export const redactSensitiveHeaders = (options: Options) => {
   if (options.headers === undefined) return;
 
   for (const prop of Object.keys(options.headers ?? {})) {
-    for (const propMatch of Sensitive.headers) {
+    for (const propMatch of genericLogRedactionKeyPatterns.headers) {
       if (!propMatch.test(prop)) continue;
       // eslint-disable-next-line no-param-reassign
       options.headers[prop] = '<redacted>';
@@ -128,14 +129,9 @@ export const redactSensitiveProps = (options: Options) => {
   if (jsonOrForm === undefined) return;
 
   for (const prop of Object.keys(jsonOrForm)) {
-    for (const propMatch of Sensitive.props) {
+    for (const propMatch of genericLogRedactionKeyPatterns.props) {
       if (!propMatch.test(prop)) continue;
       jsonOrForm[prop] = '<redacted>';
     }
   }
-};
-
-const Sensitive = {
-  headers: [/authorization/i],
-  props: [/pass(word)?/i, /email/i, /token/i, /secret/i, /client_?id/i, /client_?secret/i, /user(name)?/i],
 };

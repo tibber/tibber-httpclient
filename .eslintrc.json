@@ -44,7 +44,8 @@
 
     // airbnb terrible defaults
     "no-restricted-syntax": ["error", "ForInStatement", "LabeledStatement", "WithStatement"],
-    "no-continue": "off"
+    "no-continue": "off",
+    "import/prefer-default-export": "off"
   }
 }
 
