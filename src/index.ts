@@ -68,6 +68,44 @@ export class RequestException extends Error {
   }
 }
 
+export type ProblemDetailsArgs = {
+  detail?: string;
+  instance?: string;
+  statusCode: number;
+  title: string;
+  type: string;
+  innerError: Error;
+  extensions: {
+    [k: string]: unknown;
+  };
+};
+
+export class ProblemDetailsError extends RequestException {
+  type: string;
+
+  title: string;
+
+  instance?: string;
+
+  detail?: string;
+
+  extensions: {
+    [k: string]: unknown;
+  };
+
+  constructor(args: ProblemDetailsArgs) {
+    const { detail, instance, statusCode, title, type, innerError, extensions } = args;
+
+    super({ stack: innerError.stack, message: innerError.message, innerError, statusCode });
+
+    this.detail = detail;
+    this.type = type;
+    this.instance = instance;
+    this.title = title;
+    this.extensions = extensions;
+  }
+}
+
 type HttpClientInitParams = {
   prefixUrl?: string;
   logger?: Logger;
@@ -178,6 +216,25 @@ export class HttpClient implements IHttpClient {
           `stack:${error.stack}\n` +
           '--------------------------------------------------------------------'
       );
+      if (
+        headers['content-type'] === 'application/problem+json' &&
+        typeof error.response.body === 'object' &&
+        error.response.body !== null
+      ) {
+        const { detail, instance, title, type, ...extensions } = error.response.body as {
+          [k: string]: string | undefined;
+        };
+        if (type && title)
+          return new ProblemDetailsError({
+            detail,
+            instance,
+            title,
+            type,
+            extensions,
+            statusCode: code,
+            innerError: error
+          });
+      }
     }
     if (error instanceof Error) {
       return new RequestException({
@@ -409,15 +466,6 @@ export const redactSensitiveProps = (options: RequestOptions) => {
 };
 
 const Sensitive = {
-  headers: [
-      /authorization/i
-  ],
-  props: [
-      /pass(word)?/i,
-      /email/i,
-      /token/i,
-      /secret/i,
-      /client_?id/i,
-      /client_?secret/i,
-      /user(name)?/i]
+  headers: [/authorization/i],
+  props: [/pass(word)?/i, /email/i, /token/i, /secret/i, /client_?id/i, /client_?secret/i, /user(name)?/i]
 };
