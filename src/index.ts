@@ -217,23 +217,29 @@ export class HttpClient implements IHttpClient {
           '--------------------------------------------------------------------'
       );
       if (
-        headers['content-type'] === 'application/problem+json' &&
-        typeof error.response.body === 'object' &&
-        error.response.body !== null
+        error.response.headers['content-type']?.includes('application/problem+json') &&
+        typeof error.response.body === 'string'
       ) {
-        const { detail, instance, title, type, ...extensions } = error.response.body as {
-          [k: string]: string | undefined;
-        };
-        if (type && title)
-          return new ProblemDetailsError({
-            detail,
-            instance,
-            title,
-            type,
-            extensions,
-            statusCode: code,
-            innerError: error
-          });
+        try {
+          const responseBody = JSON.parse(error.response.body);
+          const { detail, instance, title, type, ...extensions } = responseBody as {
+            [k: string]: string | undefined;
+          };
+
+          if (type && title) {
+            return new ProblemDetailsError({
+              detail,
+              instance,
+              title,
+              type,
+              extensions: extensions ?? {},
+              statusCode: code,
+              innerError: error
+            });
+          }
+        } catch (_parsingError) {
+          this.logger?.error('Failed when attempting to parse ProblemDetails JSON');
+        }
       }
     }
     if (error instanceof Error) {
