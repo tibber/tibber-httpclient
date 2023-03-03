@@ -2,7 +2,9 @@
 Http client that is based upon `got` library.
 
 The v1 version of this library used the deprecated `request-promise` library.
+
 The v2 version was updated to use the more actively developer `got` under the hood instead.
+
 With `got` there is now also support for cancelling requests.
 
 See the unit tests for how to use this library.
@@ -12,7 +14,9 @@ All options that can be supplied to instantiation or the HTTP requests are fully
 ## Interfacing with Pino logging
 
 The v3.x version has support for [Pino](https://github.com/pinojs/pino).
-The library has as little opinions as possible as to how the logging should be formatted or serialized,
+
+The library has as few opinions as possible as to how the logging should be formatted or serialized,
+
 opting to delegate those decisions to the actual service/application.
 
 However, the library exports some default serializers and redaction keys you can use, if you want. 
