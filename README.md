@@ -3,7 +3,7 @@ Http client that is based upon `got` library.
 
 The v1 version of this library used the deprecated `request-promise` library.
 
-The v2 version was updated to use the more actively developer `got` under the hood instead.
+The v2 version was updated to use the more actively developed `got` under the hood instead.
 
 With `got` there is now also support for cancelling requests.
 
