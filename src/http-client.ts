@@ -188,8 +188,8 @@ export class HttpClient implements IHttpClient {
       this.#logger.logFailure(error);
 
       if (
-        error.response.headers['content-type']?.includes('application/problem+json') &&
-        typeof error.response.body === 'string'
+        error.response?.headers['content-type']?.includes('application/problem+json') &&
+        typeof error.response?.body === 'string'
       ) {
         try {
           const responseBody = JSON.parse(error.response.body);
