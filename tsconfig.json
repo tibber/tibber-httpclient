@@ -17,6 +17,8 @@
         "./test",
         "./.prettierrc.json",
         "./package.json",
-        "./.eslintrc.json"
+        "./.eslintrc.json",
+        "./jest.config.js",
+        "./jest-setup.js"
     ]
 }
