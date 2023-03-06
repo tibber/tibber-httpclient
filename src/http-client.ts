@@ -63,6 +63,44 @@ export class RequestException extends Error {
   }
 }
 
+export type ProblemDetailsArgs = {
+  detail?: string;
+  instance?: string;
+  statusCode: number;
+  title: string;
+  type: string;
+  innerError: Error;
+  extensions: {
+    [k: string]: unknown;
+  };
+};
+
+export class ProblemDetailsError extends RequestException {
+  type: string;
+
+  title: string;
+
+  instance?: string;
+
+  detail?: string;
+
+  extensions: {
+    [k: string]: unknown;
+  };
+
+  constructor(args: ProblemDetailsArgs) {
+    const { detail, instance, statusCode, title, type, innerError, extensions } = args;
+
+    super({ stack: innerError.stack, message: innerError.message, innerError, statusCode });
+
+    this.detail = detail;
+    this.type = type;
+    this.instance = instance;
+    this.title = title;
+    this.extensions = extensions;
+  }
+}
+
 type HttpClientInitParams = {
   prefixUrl?: string;
   logger?: Logger;
@@ -148,6 +186,32 @@ export class HttpClient implements IHttpClient {
     if (error instanceof HTTPError || error instanceof CancelError) {
       code = error.response?.statusCode ?? error.code;
       this.#logger.logFailure(error);
+
+      if (
+        error.response?.headers['content-type']?.includes('application/problem+json') &&
+        typeof error.response?.body === 'string'
+      ) {
+        try {
+          const responseBody = JSON.parse(error.response.body);
+          const { detail, instance, title, type, ...extensions } = responseBody as {
+            [k: string]: string | undefined;
+          };
+
+          if (type && title) {
+            return new ProblemDetailsError({
+              detail,
+              instance,
+              title,
+              type,
+              extensions: extensions ?? {},
+              statusCode: code,
+              innerError: error,
+            });
+          }
+        } catch (_parsingError) {
+          /* empty */
+        }
+      }
     }
 
     if (error instanceof Error) {
