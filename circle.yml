@@ -5,6 +5,14 @@ workflows:
       - build:
           context:
             - NPM
+      - publish:
+          requires:
+            - build
+          context:
+            - NPM
+          filters:
+            branches:
+              only: master
 jobs:
   build:
     working_directory: ~/package
@@ -18,6 +26,14 @@ jobs:
             yarn
             yarn test
             yarn build
+
+  publish:
+    working_directory: ~/package
+    docker:
+      - image: circleci/node:16
+    steps:
+      - attach_workspace:
+          at: .
       - run:
           name: Deploy Package
           command: |
