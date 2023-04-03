@@ -1,8 +1,8 @@
 {
   "name": "tibber-httpclient",
-  "version": "3.1.1",
-  "main": "./dist/src/index.js",
-  "types": "./dist/src/src/index.d.ts",
+  "version": "3.2.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "author": "Tibber",
   "license": "MIT",
   "scripts": {
@@ -10,11 +10,12 @@
     "test": "jest",
     "type-check": "tsc --noEmit",
     "type-check:watch": "yarn type-check -- --watch",
-    "build:types": "tsc --declaration",
-    "build": "yarn clean && yarn lint && yarn build:types && esbuild src/index.ts --bundle --platform=node --minify --sourcemap=external --outfile=dist/src/index.js",
-    "build:dev": "yarn clean && yarn build:types && esbuild src/index.ts --bundle --sourcemap=external --outfile=dist/src/index.js",
-    "build:watch": "esbuild src/index.ts --bundle --watch --sourcemap=external --outfile=dist/src/index.js",
-    "clean": "yarn del ./dist"
+    "build:types": "tsc --declaration && yarn copy-typedefs",
+    "build": "yarn clean && yarn lint && yarn build:types && esbuild src/index.ts --bundle --platform=node --minify --sourcemap=external --outfile=dist/index.js",
+    "build:dev": "yarn clean && yarn build:types && esbuild src/index.ts --bundle --sourcemap=external --outfile=dist/index.js",
+    "build:watch": "esbuild src/index.ts --bundle --watch --sourcemap=external --outfile=dist/index.js",
+    "copy-typedefs": "copyfiles -u 2 ./dist/src/**/*.d.ts ./dist --verbose",
+    "clean": "del-cli ./dist"
   },
   "devDependencies": {
     "@types/express": "^4.17.11",
@@ -22,6 +23,7 @@
     "@types/node": "^15.0.1",
     "@typescript-eslint/eslint-plugin": "^5.3.0",
     "@typescript-eslint/parser": "^5.3.0",
+    "copyfiles": "^2.4.1",
     "del-cli": "^4.0.1",
     "esbuild": "^0.13.12",
     "eslint-config-airbnb-base": "^15.0.0",
