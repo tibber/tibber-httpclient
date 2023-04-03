@@ -2,7 +2,7 @@
     "compilerOptions": {
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "outDir": "./dist/src",
+        "outDir": "./dist",
         "sourceMap": false,
         "allowJs": true,
         "strict": true,

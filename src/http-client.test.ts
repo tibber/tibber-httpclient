@@ -1,6 +1,6 @@
 import { AbortController } from 'abort-controller';
 import { CancelError, HTTPError } from 'got';
-import { HttpClient, RequestException, TestHttpClient } from '.';
+import { HttpClient, RequestException, TestHttpClient } from './http-client';
 
 interface Todo {
   id?: number;

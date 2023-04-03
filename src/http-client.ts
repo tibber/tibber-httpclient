@@ -101,7 +101,7 @@ export class ProblemDetailsError extends RequestException {
   }
 }
 
-type HttpClientInitParams = {
+export type HttpClientInitParams = {
   prefixUrl?: string;
   logger?: Logger;
   config?: HttpClientConfig;
