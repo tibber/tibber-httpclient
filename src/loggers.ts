@@ -69,36 +69,41 @@ export class PinoLogger implements HttpLogger {
   }
 
   logSuccess(res: Response): void {
-    const { request: req, timings } = res;
-    const level = req.options.method === 'GET' ? 'debug' : 'info';
+    const { request, timings } = res;
+    const level = request.options.method === 'GET' ? 'debug' : 'info';
+    const req = copy(request);
+
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    (req as any).method = req.options?.method;
+    (req as any).url = req.options?.url;
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+
     this.#logger[level]({
-      req: {
-        ...req,
-        method: req.options?.method,
-        url: req.options?.url,
-      },
+      req,
       res,
       responseTime: Number(timings?.end) - Number(timings?.start),
     });
   }
 
   logFailure(error: HTTPError | CancelError): void {
-    const { response: res, request: req, options, timings } = error;
+    const { response, request, options, timings } = error;
+    const req = copy(request);
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    (req as any).method = req?.options?.method;
+    (req as any).url = req?.options?.url;
+    (req as any).headers = options.headers;
+    (req as any).json = options.json;
+    (req as any).failed = true;
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+
+    const res = copy(response);
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    (res as any).failed = true;
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+
     this.#logger.error({
-      req: {
-        ...req,
-        method: req?.options?.method,
-        url: req?.options?.url,
-        headers: options.headers,
-        json: options.json,
-        failed: true,
-      },
-      res: {
-        ...res,
-        headers: res.headers,
-        body: res.body,
-        failed: true,
-      },
+      req,
+      res,
       err: error,
       responseTime: Number(timings?.end) - Number(timings?.start),
     });
