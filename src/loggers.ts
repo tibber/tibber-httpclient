@@ -73,11 +73,12 @@ export class PinoLogger implements HttpLogger {
     const level = req.options.method === 'GET' ? 'debug' : 'info';
     this.#logger[level]({
       req: {
-        ...req,
         method: req.options?.method,
         url: req.options?.url,
       },
-      res,
+      res: {
+        statusCode: res.statusCode,
+      },
       responseTime: Number(timings?.end) - Number(timings?.start),
     });
   }
@@ -86,7 +87,6 @@ export class PinoLogger implements HttpLogger {
     const { response: res, request: req, options, timings } = error;
     this.#logger.error({
       req: {
-        ...req,
         method: req?.options?.method,
         url: req?.options?.url,
         headers: options.headers,
@@ -94,7 +94,7 @@ export class PinoLogger implements HttpLogger {
         failed: true,
       },
       res: {
-        ...res,
+        statusCode: res.statusCode,
         headers: res.headers,
         body: res.body,
         failed: true,
