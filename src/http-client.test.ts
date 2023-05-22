@@ -96,7 +96,7 @@ describe('http client', () => {
 
     setTimeout(() => {
       controller.abort();
-    }, 5);
+    }, 10);
 
     const error = await getError<RequestException>(
       async () => await client.get('200', { abortSignal: controller.signal }),
