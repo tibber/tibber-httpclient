@@ -23,6 +23,13 @@ describe('http client', () => {
           res.setHeader('Content-Type', 'text/plain');
           res.end('400 Bad Request');
           break;
+        case '/wait':
+          setTimeout(() => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/plain');
+            res.end('400 Bad Request');
+          }, 200);
+          break;
         default:
           res.statusCode = 200;
           res.setHeader('Content-Type', 'text/plain');
@@ -96,10 +103,10 @@ describe('http client', () => {
 
     setTimeout(() => {
       controller.abort();
-    }, 10);
+    }, 100);
 
     const error = await getError<RequestException>(
-      async () => await client.get('200', { abortSignal: controller.signal }),
+      async () => await client.get('wait', { abortSignal: controller.signal }),
     );
     expect(error).toBeInstanceOf(RequestException);
     expect(error.innerError).toBeInstanceOf(CancelError);
