@@ -27,7 +27,7 @@ describe('http client', () => {
           setTimeout(() => {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'text/plain');
-            res.end('400 Bad Request');
+            res.end('200 OK');
           }, 200);
           break;
         default:
