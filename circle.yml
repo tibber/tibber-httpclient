@@ -16,6 +16,7 @@ workflows:
 jobs:
   build:
     working_directory: ~/package
+    resource_class: small
     docker:
       - image: circleci/node:16
     steps:
@@ -32,6 +33,7 @@ jobs:
             - .
   publish:
     working_directory: ~/package
+    resource_class: small
     docker:
       - image: circleci/node:16
     steps:
