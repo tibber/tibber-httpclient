@@ -3,7 +3,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "./dist",
-    "sourceMap": false,
+    "sourceMap": true,
     "allowJs": true,
     "strict": true,
     "noUnusedParameters": true,
