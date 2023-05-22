@@ -1,5 +1,6 @@
 import each from 'jest-each';
 import { redact, redactSensitiveHeaders, redactSensitiveProps } from './loggers';
+import { RequestOptions } from './interfaces';
 
 describe('log redaction', () => {
   test('should deep clone options', () => {
@@ -46,24 +47,24 @@ describe('log redaction', () => {
         ${{ Token: 't' }}           | ${{ Token: '<redacted>' }}
     `.describe('redact $input', ({ input, expected }) => {
     test(`from 'json'`, () => {
-      const actual = { json: input };
+      const actual = { json: input } as RequestOptions;
       redactSensitiveProps(actual);
       expect(actual.json).toStrictEqual(expected);
     });
 
     test(`from 'form'`, () => {
-      const actual = { form: input };
+      const actual = { form: input } as RequestOptions;
       redactSensitiveProps(actual);
       expect(actual.form).toStrictEqual(expected);
     });
   });
 
   each`
-    input | expected  
+    input | expected
       ${{ authorization: 'a' }} | ${{ authorization: '<redacted>' }},
       ${{ Authorization: 'a' }} | ${{ Authorization: '<redacted>' }},
   `.test('redact $input from headers', ({ input, expected }) => {
-    const actual = { headers: input };
+    const actual = { headers: input } as RequestOptions;
     redactSensitiveHeaders(actual);
     expect(actual.headers).toStrictEqual(expected);
   });

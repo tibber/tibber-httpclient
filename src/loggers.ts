@@ -1,21 +1,11 @@
-import { CancelError, HTTPError, Options, Response } from 'got';
+import { CancelError, HTTPError, Response } from 'got/dist/source';
 import copy from 'fast-copy';
 import { genericLogRedactionKeyPatterns } from './log-redaction';
-
-export interface Logger {
-  info(...args: unknown[]): void;
-  error(...args: unknown[]): void;
-  debug(...args: unknown[]): void;
-}
-
-export interface HttpLogger {
-  logSuccess(response: Response, options: Options): void;
-  logFailure(error: HTTPError | CancelError): void;
-}
+import { HttpLogger, Logger, RequestOptions } from './interfaces';
 
 export class NoOpLogger implements HttpLogger {
   // eslint-disable-next-line class-methods-use-this
-  logSuccess(_response: Response, _options: Options): void {}
+  logSuccess(_response: Response, _options: RequestOptions): void {}
 
   // eslint-disable-next-line class-methods-use-this
   logFailure(_error: HTTPError | CancelError): void {}
@@ -28,7 +18,7 @@ export class GenericLogger implements HttpLogger {
     this.#logger = logger;
   }
 
-  logSuccess(response: Response, options: Options): void {
+  logSuccess(response: Response, options: RequestOptions): void {
     const { url, statusCode, timings } = response;
     const message = `${options.method} ${url} ${statusCode} ${new Date().getTime() - timings.start} ms`;
     if (options.method === 'GET') {
@@ -105,14 +95,14 @@ export class PinoLogger implements HttpLogger {
   }
 }
 
-export const redact = (options: Options) => {
+export const redact = (options: RequestOptions) => {
   const clone = copy(options);
   redactSensitiveHeaders(clone);
   redactSensitiveProps(clone);
   return clone;
 };
 
-export const redactSensitiveHeaders = (options: Options) => {
+export const redactSensitiveHeaders = (options: RequestOptions) => {
   if (options.headers === undefined) return;
 
   for (const prop of Object.keys(options.headers ?? {})) {
@@ -124,14 +114,14 @@ export const redactSensitiveHeaders = (options: Options) => {
   }
 };
 
-export const redactSensitiveProps = (options: Options) => {
+export const redactSensitiveProps = (options: RequestOptions) => {
   const jsonOrForm = options.json ?? options.form;
   if (jsonOrForm === undefined) return;
 
   for (const prop of Object.keys(jsonOrForm)) {
     for (const propMatch of genericLogRedactionKeyPatterns.props) {
       if (!propMatch.test(prop)) continue;
-      jsonOrForm[prop] = '<redacted>';
+      (jsonOrForm as Record<string, unknown>)[prop] = '<redacted>';
     }
   }
 };

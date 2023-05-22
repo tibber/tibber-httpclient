@@ -3,3 +3,4 @@ export * from './http-client.js';
 export * from './log-serializers.js';
 export * from './log-redaction.js';
 export * from './loggers.js';
+export * from './interfaces.js';
