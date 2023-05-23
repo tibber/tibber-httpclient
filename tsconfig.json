@@ -1,24 +1,24 @@
 {
-    "compilerOptions": {
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "outDir": "./dist",
-        "sourceMap": false,
-        "allowJs": true,
-        "strict": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "target": "ES2019",
-        "module": "commonjs",
-        "moduleResolution": "node"
-    },
-    "include": [
-        "./src",
-        "./test",
-        "./.prettierrc.json",
-        "./package.json",
-        "./.eslintrc.json",
-        "./jest.config.js",
-        "./jest-setup.js"
-    ]
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "sourceMap": true,
+    "allowJs": true,
+    "strict": true,
+    "noUnusedParameters": true,
+    "target": "ES2019",
+    "module": "commonjs",
+    "moduleResolution": "node"
+  },
+  "include": [
+    "./src",
+    "./test",
+    "./.prettierrc.json",
+    "./package.json",
+    "./.eslintrc.json",
+    "./babel.config.js",
+    "./jest.config.js",
+    "./jest-setup.js"
+  ]
 }

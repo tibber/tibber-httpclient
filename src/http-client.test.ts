@@ -1,6 +1,9 @@
-import { AbortController } from 'abort-controller';
 import { CancelError, HTTPError } from 'got';
-import { HttpClient, RequestException, TestHttpClient } from './http-client';
+import { createServer, Server } from 'http';
+import { HttpClient, TestHttpClient, RequestException } from './http-client';
+
+const Port = 38080;
+const ServerUrl = `http://localhost:${Port}`;
 
 interface Todo {
   id?: number;
@@ -10,6 +13,36 @@ interface Todo {
 }
 
 describe('http client', () => {
+  let server: Server;
+
+  beforeAll(() => {
+    server = createServer(async (req, res) => {
+      switch (req.url) {
+        case '/400':
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'text/plain');
+          res.end('400 Bad Request');
+          break;
+        case '/wait':
+          setTimeout(() => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/plain');
+            res.end('200 OK');
+          }, 200);
+          break;
+        default:
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'text/plain');
+          res.end('200 OK');
+          break;
+      }
+    }).listen(Port);
+  });
+
+  afterAll(() => {
+    server.close();
+  });
+
   test('Instantiate client without init parameters', async () => {
     const client = new HttpClient();
     const response: Todo = await client.get('https://jsonplaceholder.typicode.com/posts/1');
@@ -66,43 +99,40 @@ describe('http client', () => {
 
   test('Canceling request with AbortSignal', async () => {
     const controller = new AbortController();
-    const { signal } = controller;
-    const client = new HttpClient({ prefixUrl: 'https://httpbin.org' });
+    const client = new HttpClient({ prefixUrl: ServerUrl });
+
     setTimeout(() => {
       controller.abort();
-    }, 10);
+    }, 100);
 
-    const testFn = async () =>
-      await client.get('anything', {
-        abortSignal: signal,
-      });
-    const error = await getError<RequestException>(testFn);
+    const error = await getError<RequestException>(
+      async () => await client.get('wait', { abortSignal: controller.signal }),
+    );
     expect(error).toBeInstanceOf(RequestException);
     expect(error.innerError).toBeInstanceOf(CancelError);
   });
 
   test('Error request', async () => {
     const client = new HttpClient({
-      prefixUrl: 'https://httpbin.org',
+      prefixUrl: 'http://localhost:38080',
     });
 
-    const testFn = async () => await client.get('status/400');
-
-    const error = await getError<RequestException>(testFn);
+    const error = await getError<RequestException>(async () => await client.get('400'));
     expect(error).toBeInstanceOf(RequestException);
-    expect(error.innerError).toBeInstanceOf(HTTPError);
     expect(error.statusCode).toBe(400);
   });
 
   test('Create basic auth header', async () => {
     const client = new HttpClient({
-      prefixUrl: 'https://httpbin.org',
+      prefixUrl: ServerUrl,
       config: { basicAuthPassword: '1234', basicAuthUserName: 'myname' },
       options: { headers: { test: '123' } },
     });
 
-    const testFn = async () => await client.get('status/400', { headers: { nonHeader: 'abc' } });
-    const error = await getError<RequestException>(testFn);
+    const error = await getError<RequestException>(
+      async () => await client.get('400', { headers: { nonHeader: 'abc' } }),
+    );
+
     expect(error).toBeInstanceOf(RequestException);
     expect(error.innerError).toBeInstanceOf(HTTPError);
     if (error.innerError instanceof HTTPError) {
@@ -114,13 +144,14 @@ describe('http client', () => {
 
   test('Create header from headerFunc', async () => {
     const client = new HttpClient({
-      prefixUrl: 'https://httpbin.org',
+      prefixUrl: ServerUrl,
       config: { basicAuthPassword: '1234', basicAuthUserName: 'myname' },
       headerFunc: () => ({ test: '123' }),
     });
 
-    const testFn = async () => await client.get('status/400', { headers: { nonHeader: 'abc' } });
-    const error = await getError<RequestException>(testFn);
+    const error = await getError<RequestException>(
+      async () => await client.get('400', { headers: { nonHeader: 'abc' } }),
+    );
     expect(error).toBeInstanceOf(RequestException);
     expect(error.innerError).toBeInstanceOf(HTTPError);
     if (error.innerError instanceof HTTPError) {
@@ -181,9 +212,12 @@ describe('http client', () => {
   });
 });
 
+class NoErrorThrownError extends Error {}
+
 const getError = async <TError extends Error>(call: () => unknown): Promise<TError> => {
   try {
-    return (await call()) as TError;
+    await call();
+    throw new NoErrorThrownError();
   } catch (error: unknown) {
     return error as TError;
   }

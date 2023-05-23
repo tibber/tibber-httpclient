@@ -1,40 +1,7 @@
-import got, {
-  Response,
-  Got,
-  Options,
-  CancelableRequest,
-  HTTPError,
-  CancelError,
-  Method,
-  Headers,
-} from 'got/dist/source';
-import { AbortSignal } from 'abort-controller';
+import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError, Method, Headers } from 'got';
 import NodeCache from 'node-cache';
-import { GenericLogger, HttpLogger, Logger, NoOpLogger, PinoLogger } from './loggers';
-
-type GotOptions = Pick<
-  Options,
-  'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect' | 'path'
->;
-
-interface RequestOptions extends GotOptions {
-  abortSignal?: AbortSignal;
-  isForm?: boolean;
-}
-
-export interface IHttpClient {
-  get<T>(path: string, options?: Omit<RequestOptions, 'json'>): Promise<T>;
-  post<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
-  patch<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
-  put<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
-  delete(path: string, options?: Omit<RequestOptions, 'json'>): Promise<void>;
-}
-
-export interface HttpClientConfig {
-  basicAuthUserName?: string;
-  basicAuthPassword?: string;
-  bearerToken?: string;
-}
+import { HttpClientConfig, HttpLogger, IHttpClient, Logger, RequestOptions } from './interfaces';
+import { GenericLogger, NoOpLogger, PinoLogger } from './loggers';
 
 export type HeaderFunction = () => Headers;
 
@@ -105,7 +72,7 @@ export type HttpClientInitParams = {
   prefixUrl?: string;
   logger?: Logger;
   config?: HttpClientConfig;
-  options?: Options;
+  options?: Partial<Options>;
   headerFunc?: HeaderFunction;
 };
 
@@ -119,26 +86,30 @@ export class HttpClient implements IHttpClient {
   readonly #headerFunc: HeaderFunction | undefined;
 
   constructor(initParams?: HttpClientInitParams) {
+    const gotOptions: Partial<Options> = {
+      retry: {},
+      ...initParams?.options,
+      context: { ...initParams?.options?.context, ...initParams?.config },
+    };
+
+    if (initParams?.prefixUrl !== undefined) {
+      gotOptions.prefixUrl = initParams.prefixUrl;
+      this.#prefixUrl = initParams?.prefixUrl;
+    }
+
     const addToHeader = (header: Record<string, string>) => {
       gotOptions.headers ??= header;
       gotOptions.headers = { ...gotOptions.headers, ...header };
     };
 
-    const gotOptions: Options = {
-      retry: 0,
-      ...initParams?.options,
-      context: { ...initParams?.options?.context, ...initParams?.config },
-      prefixUrl: initParams?.prefixUrl,
-    };
-
     if (initParams?.config?.basicAuthUserName && initParams?.config?.basicAuthPassword) {
       addToHeader({
         Authorization: `Basic ${Buffer.from(
-          `${initParams?.config.basicAuthUserName}:${initParams?.config.basicAuthPassword}`,
+          `${initParams.config.basicAuthUserName}:${initParams.config.basicAuthPassword}`,
         ).toString('base64')}`,
       });
     } else if (initParams?.config?.bearerToken) {
-      addToHeader({ Authorization: `Bearer ${initParams?.config.bearerToken}` });
+      addToHeader({ Authorization: `Bearer ${initParams.config.bearerToken}` });
     }
 
     if (initParams?.logger) {
@@ -149,10 +120,9 @@ export class HttpClient implements IHttpClient {
     }
 
     if (initParams?.headerFunc) {
-      this.#headerFunc = initParams?.headerFunc;
+      this.#headerFunc = initParams.headerFunc;
     }
 
-    this.#prefixUrl = initParams?.prefixUrl;
     this.#got = got.extend(gotOptions);
   }
 
@@ -246,8 +216,11 @@ export class HttpClient implements IHttpClient {
         ...this.#headerFunc?.(),
       },
     };
+
+    const { isForm, ...gotOptions } = optionsWithComputedHeaders;
+
     return {
-      ...(optionsWithComputedHeaders ?? {}),
+      ...(gotOptions ?? {}),
       ...(jsonOrForm !== undefined ? { [jsonOrForm]: data } : {}),
       method,
     };
