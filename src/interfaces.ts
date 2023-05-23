@@ -1,4 +1,4 @@
-import { CancelError, HTTPError, Options, Response } from 'got/dist/source';
+import { CancelError, HTTPError, OptionsInit, Response } from 'got/dist/source';
 
 export interface Logger {
   info(...args: unknown[]): void;
@@ -11,11 +11,9 @@ export interface HttpLogger {
   logFailure(error: HTTPError | CancelError): void;
 }
 
-type GotOptions = Partial<
-  Pick<
-    Options,
-    'context' | 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect'
-  >
+type GotOptions = Pick<
+  OptionsInit,
+  'context' | 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect'
 >;
 
 export type RequestOptions = GotOptions & {

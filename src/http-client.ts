@@ -1,4 +1,4 @@
-import got, { Response, Got, Options, CancelableRequest, HTTPError, CancelError, Method, Headers } from 'got';
+import got, { Response, Got, CancelableRequest, HTTPError, CancelError, Method, Headers, OptionsInit } from 'got';
 import NodeCache from 'node-cache';
 import { HttpClientConfig, HttpLogger, IHttpClient, Logger, RequestOptions } from './interfaces';
 import { GenericLogger, NoOpLogger, PinoLogger } from './loggers';
@@ -72,7 +72,7 @@ export type HttpClientInitParams = {
   prefixUrl?: string;
   logger?: Logger;
   config?: HttpClientConfig;
-  options?: Partial<Options>;
+  options?: OptionsInit;
   headerFunc?: HeaderFunction;
 };
 
@@ -86,7 +86,7 @@ export class HttpClient implements IHttpClient {
   readonly #headerFunc: HeaderFunction | undefined;
 
   constructor(initParams?: HttpClientInitParams) {
-    const gotOptions: Partial<Options> = {
+    const gotOptions: OptionsInit = {
       retry: {},
       ...initParams?.options,
       context: { ...initParams?.options?.context, ...initParams?.config },
@@ -270,11 +270,11 @@ export class HttpClient implements IHttpClient {
   /**
    * @description Access to all 'got' supported options, returns the response instead of JSON.
    * @param {string} path path or url
-   * @param {RequestOptions} options all options supported by 'got'
-   * @return {Response<unknown>}
+   * @param {OptionsInit} options all options supported by 'got'
+   * @return {Promise<Response<T = unknown>>}
    */
-  async raw(path: string, options: RequestOptions): Promise<Response<unknown>> {
-    return await this.#got(path, options);
+  async raw<T = unknown>(path: string, options: OptionsInit): Promise<Response<T>> {
+    return (await this.#got(path, options)) as Response<T>;
   }
 }
 
