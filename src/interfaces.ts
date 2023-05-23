@@ -11,9 +11,11 @@ export interface HttpLogger {
   logFailure(error: HTTPError | CancelError): void;
 }
 
-type GotOptions = Pick<
-  Partial<Options>,
-  'context' | 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect'
+type GotOptions = Partial<
+  Pick<
+    Options,
+    'context' | 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect'
+  >
 >;
 
 export type RequestOptions = GotOptions & {
