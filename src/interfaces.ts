@@ -23,10 +23,11 @@ export type RequestOptions = GotOptions & {
 
 export interface IHttpClient {
   get<T>(path: string, options?: Omit<RequestOptions, 'json'>): Promise<T>;
-  post<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
-  patch<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
-  put<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T>;
-  delete(path: string, options?: Omit<RequestOptions, 'json'>): Promise<void>;
+  post<T>(path: string, data?: unknown, options?: Omit<RequestOptions, 'json'>): Promise<T>;
+  patch<T>(path: string, data?: unknown, options?: Omit<RequestOptions, 'json'>): Promise<T>;
+  put<T>(path: string, data?: unknown, options?: Omit<RequestOptions, 'json'>): Promise<T>;
+  delete(path: string, options?: Omit<RequestOptions, 'json'>, data?: unknown): Promise<void>;
+  raw<T = unknown>(path: string, options: Omit<RequestOptions, 'json'>): Promise<Response<T>>;
 }
 
 export interface HttpClientConfig {

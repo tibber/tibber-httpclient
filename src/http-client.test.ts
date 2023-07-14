@@ -97,6 +97,11 @@ describe('http client', () => {
     await client.delete('posts/1');
   });
 
+  test('DELETE with body', async () => {
+    const client = new HttpClient({ prefixUrl: 'https://jsonplaceholder.typicode.com' });
+    await client.delete('posts/1', undefined, { data: 'dummy' });
+  });
+
   test('Canceling request with AbortSignal', async () => {
     const controller = new AbortController();
     const client = new HttpClient({ prefixUrl: ServerUrl });

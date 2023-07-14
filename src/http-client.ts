@@ -198,11 +198,7 @@ export class HttpClient implements IHttpClient {
   }
 
   // set the method and decide to place the 'json' or 'form' property, or not when no data.
-  #processOptions = (
-    method: Method,
-    data: Record<string, unknown> | undefined,
-    options?: RequestOptions,
-  ): RequestOptions => {
+  #processOptions = (method: Method, data: unknown, options?: RequestOptions): RequestOptions => {
     let jsonOrForm: string | undefined;
     if (options?.isForm) {
       jsonOrForm = 'form';
@@ -234,7 +230,7 @@ export class HttpClient implements IHttpClient {
     });
   }
 
-  async post<T>(path: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, 'json'>): Promise<T> {
+  async post<T>(path: string, data?: unknown, options?: Omit<RequestOptions, 'json'>): Promise<T> {
     const opts = this.#processOptions('POST', data, options);
     return await this.#requestJson({
       path,
@@ -242,7 +238,7 @@ export class HttpClient implements IHttpClient {
     });
   }
 
-  async put<T>(path: string, data?: Record<string, unknown>, options?: RequestOptions): Promise<T> {
+  async put<T>(path: string, data?: unknown, options?: RequestOptions): Promise<T> {
     const opts = this.#processOptions('PUT', data, options);
     return await this.#requestJson({
       path,
@@ -250,7 +246,7 @@ export class HttpClient implements IHttpClient {
     });
   }
 
-  async patch<T>(path: string, data?: Record<string, unknown>, options?: RequestOptions): Promise<T> {
+  async patch<T>(path: string, data?: unknown, options?: RequestOptions): Promise<T> {
     const opts = this.#processOptions('PATCH', data, options);
     return await this.#requestJson({
       path,
@@ -258,8 +254,8 @@ export class HttpClient implements IHttpClient {
     });
   }
 
-  async delete(path: string, options?: RequestOptions): Promise<void> {
-    const o = this.#processOptions('DELETE', undefined, options);
+  async delete(path: string, options?: RequestOptions, data?: unknown): Promise<void> {
+    const o = this.#processOptions('DELETE', data, options);
     await this.#requestJson({
       path,
       options: o,
@@ -294,7 +290,7 @@ export class TestHttpClient implements IHttpClient {
     this.calls = { get: {}, post: {}, patch: {}, put: {}, delete: {} };
   }
 
-  public async get<T>(route: string): Promise<T> {
+  async get<T>(route: string): Promise<T> {
     // storing `undefined` here makes it non-obvious to verify (you have to use the `in` keyword)
     // we don't want to potentially break people's test by changing it though
     this.calls.get[route] = undefined;
@@ -302,25 +298,25 @@ export class TestHttpClient implements IHttpClient {
     return Promise.resolve(response as T);
   }
 
-  public async post<T>(route: string, data: Record<string, unknown>): Promise<T> {
+  async post<T>(route: string, data: Record<string, unknown>): Promise<T> {
     this.calls.post[route] = data || {};
     const response = this._routePayloads.post?.[route];
     return response as T;
   }
 
-  public async put<T>(route: string, data: Record<string, unknown>): Promise<T> {
+  async put<T>(route: string, data: Record<string, unknown>): Promise<T> {
     this.calls.put[route] = data || {};
     const response = this._routePayloads.put?.[route];
     return response as T;
   }
 
-  public async patch<T>(route: string, data: Record<string, unknown>): Promise<T> {
+  async patch<T>(route: string, data: Record<string, unknown>): Promise<T> {
     this.calls.patch[route] = data || {};
     const response = this._routePayloads.patch?.[route];
     return response as T;
   }
 
-  public async delete<T>(route: string): Promise<T> {
+  async delete<T>(route: string): Promise<T> {
     // storing `undefined` here makes it non-obvious to verify (you have to use the `in` keyword)
     // we don't want to potentially break people's test by changing it though
     this.calls.delete[route] = undefined;
@@ -328,7 +324,12 @@ export class TestHttpClient implements IHttpClient {
     return response as T;
   }
 
-  public resetCalls(): void {
+  // eslint-disable-next-line class-methods-use-this
+  raw<T = unknown>(_path: string, _options: Omit<RequestOptions, 'json'>): Promise<Response<T>> {
+    return Promise.reject(new Error('method not implemented'));
+  }
+
+  resetCalls(): void {
     this.calls = { get: {}, post: {}, patch: {}, put: {}, delete: {} };
   }
 }
@@ -384,5 +385,9 @@ export class CachedClient implements ICachedHttpClient {
 
   public async delete(route: string): Promise<void> {
     return await this.#httpClient.delete(route);
+  }
+
+  async raw<T = unknown>(path: string, options: Omit<RequestOptions, 'json'>): Promise<Response<T>> {
+    return await this.#httpClient.raw(path, options);
   }
 }
