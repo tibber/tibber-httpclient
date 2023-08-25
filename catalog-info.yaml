@@ -4,8 +4,9 @@ metadata:
   name: tibber-httpclient
   annotations:
     github.com/project-slug: tibber/tibber-httpclient
+    circleci.com/project-slug: gh/tibber/httpclient
   tags:
-    - typescript
+  - typescript
 spec:
   type: library
   lifecycle: production
