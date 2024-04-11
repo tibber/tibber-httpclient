@@ -12,21 +12,26 @@ export class RequestException extends Error {
 
   readonly innerError;
 
+  readonly responseBody?: unknown;
+
   constructor({
     message,
     statusCode,
     innerError,
     stack,
+    responseBody,
   }: {
     message: string;
     statusCode?: string | number;
     innerError: Error;
     stack?: string;
+    responseBody?: unknown;
   }) {
     super(message);
     this.statusCode = statusCode;
     this.stack = stack;
     this.innerError = innerError;
+    this.responseBody = responseBody;
   }
 }
 
@@ -156,13 +161,23 @@ export class HttpClient implements IHttpClient {
     if (error instanceof HTTPError || error instanceof CancelError) {
       code = error.response?.statusCode ?? error.code;
       this.#logger.logFailure(error);
-
+      const contentType = error.response?.headers['content-type'] ?? '';
       if (
-        error.response?.headers['content-type']?.includes('application/problem+json') &&
+        (contentType.includes('application/problem+json') || contentType.includes('application/json')) &&
         typeof error.response?.body === 'string'
       ) {
         try {
           const responseBody = JSON.parse(error.response.body);
+          if (contentType.includes('application/json')) {
+            const { message, stack } = error;
+            return new RequestException({
+              message: `${this.#prefixUrl}/${path} ${message}`,
+              statusCode: code,
+              innerError: error,
+              responseBody,
+              stack,
+            });
+          }
           const { detail, instance, title, type, ...extensions } = responseBody as {
             [k: string]: string | undefined;
           };
