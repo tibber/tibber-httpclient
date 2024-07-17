@@ -11,7 +11,7 @@ export class NoOpLogger implements HttpLogger {
   logFailure(_error: HTTPError | CancelError): void {}
 }
 
-const tryStringifyJSON = (data: any | undefined | null, onfailureResult?: string): string=>{
+const tryStringifyJSON = (data: object | undefined | null, onfailureResult?: string): string=>{
   if (!data){
     return '';
   }
