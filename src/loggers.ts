@@ -11,6 +11,19 @@ export class NoOpLogger implements HttpLogger {
   logFailure(_error: HTTPError | CancelError): void {}
 }
 
+const tryStringifyJSON = (data: any | undefined | null, onfailureResult?: string): string=>{
+  if (!data){
+    return '';
+  }
+  try {
+    return JSON.stringify(data);
+  }
+  catch (e) {
+    return onfailureResult ?? 'could not serialize logged data';  
+  }  
+}
+
+
 export class GenericLogger implements HttpLogger {
   readonly #logger: Logger;
 
@@ -27,7 +40,7 @@ export class GenericLogger implements HttpLogger {
       this.#logger.info(message);
     }
     const redactedOptions = redact(options);
-    this.#logger.debug('request-options', JSON.stringify(redactedOptions).replace(/\\n/g, ''));
+    this.#logger.debug('request-options', tryStringifyJSON(redactedOptions).replace(/\\n/g, ''));
   }
 
   logFailure(error: HTTPError | CancelError): void {
@@ -42,8 +55,8 @@ export class GenericLogger implements HttpLogger {
       '\n' +
         '--------------------------------------------------------------------\n' +
         `${method} ${requestUrl} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
-        `headers: ${JSON.stringify(headers)}\n` +
-        `request-options: ${JSON.stringify({ ...redactedOptions, context }).replace(/\\n/g, '')}\n` +
+        `headers: ${tryStringifyJSON(headers)}\n` +
+        `request-options: ${tryStringifyJSON({ ...redactedOptions, context }).replace(/\\n/g, '')}\n` +
         `error:${error.message}\n` +
         `stack:${error.stack}\n` +
         '--------------------------------------------------------------------',
