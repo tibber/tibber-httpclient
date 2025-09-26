@@ -19,8 +19,8 @@ const tryStringifyJSON = (data: object | undefined | null, onfailureResult?: str
     return JSON.stringify(data);
   }
   catch (e) {
-    return onfailureResult ?? 'could not serialize logged data';  
-  }  
+    return onfailureResult ?? 'could not serialize logged data';
+  }
 }
 
 
@@ -74,6 +74,8 @@ export class PinoLogger implements HttpLogger {
   logSuccess(res: Response): void {
     const { request: req, timings } = res;
     const level = req.options.method === 'GET' ? 'debug' : 'info';
+    const responseTime = Number(timings?.end) - Number(timings?.start);
+    const message = `${req.options.method} ${req.options.url} ${res.statusCode} ${res.statusMessage} ${responseTime}ms`;
     this.#logger[level]({
       req: {
         method: req.options?.method,
@@ -81,30 +83,36 @@ export class PinoLogger implements HttpLogger {
       },
       res: {
         statusCode: res.statusCode,
+        statusMessage: res.statusMessage,
       },
-      responseTime: Number(timings?.end) - Number(timings?.start),
-    });
+      responseTime,
+    }, message);
   }
 
   logFailure(error: HTTPError | CancelError): void {
-    const { response: res, request: req, options, timings } = error;
+    const { response: res, request: req, timings } = error;
+    const responseTime = Number(timings?.end) - Number(timings?.start);
+    const statusCode = res?.statusCode ?? error.code;
+    const statusMessage = res?.statusMessage ?? 'Error';
+    const message = `${req?.options?.method} ${req?.options?.url} ${statusCode} ${statusMessage} ${responseTime}ms`;
     this.#logger.error({
       req: {
         method: req?.options?.method,
         url: req?.options?.url,
-        headers: options.headers,
-        json: options.json,
         failed: true,
       },
       res: {
-        statusCode: res.statusCode,
-        headers: res.headers,
-        body: res.body,
+        statusCode: res?.statusCode,
+        statusMessage: res?.statusMessage,
         failed: true,
       },
-      err: error,
-      responseTime: Number(timings?.end) - Number(timings?.start),
-    });
+      err: {
+        message: error.message,
+        code: error.code,
+        statusCode: res?.statusCode,
+      },
+      responseTime,
+    }, message);
   }
 }
 
