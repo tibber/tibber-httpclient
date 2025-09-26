@@ -5,6 +5,7 @@ workflows:
       - build:
           context:
             - NPM
+            - GITHUB
       - publish:
           requires:
             - build
