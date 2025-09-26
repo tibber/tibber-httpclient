@@ -19,8 +19,8 @@ const tryStringifyJSON = (data: object | undefined | null, onfailureResult?: str
     return JSON.stringify(data);
   }
   catch (e) {
-    return onfailureResult ?? 'could not serialize logged data';  
-  }  
+    return onfailureResult ?? 'could not serialize logged data';
+  }
 }
 
 
@@ -35,12 +35,12 @@ export class GenericLogger implements HttpLogger {
     const { url, statusCode, timings } = response;
     const message = `${options.method} ${url} ${statusCode} ${new Date().getTime() - timings.start} ms`;
     if (options.method === 'GET') {
-      this.#logger.debug(message);
+      this.#logger.debug({}, message);
     } else {
-      this.#logger.info(message);
+      this.#logger.info({}, message);
     }
     const redactedOptions = redact(options);
-    this.#logger.debug('request-options', tryStringifyJSON(redactedOptions).replace(/\\n/g, ''));
+    this.#logger.debug({ requestOptions: redactedOptions }, 'request-options');
   }
 
   logFailure(error: HTTPError | CancelError): void {
@@ -52,13 +52,14 @@ export class GenericLogger implements HttpLogger {
 
     const redactedOptions = redact(error.options);
     this.#logger.error(
+      {},
       '\n' +
         '--------------------------------------------------------------------\n' +
         `${method} ${requestUrl} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
         `headers: ${tryStringifyJSON(headers)}\n` +
         `request-options: ${tryStringifyJSON({ ...redactedOptions, context }).replace(/\\n/g, '')}\n` +
-        `error:${error.message}\n` +
-        `stack:${error.stack}\n` +
+        `error: ${error.message}\n` +
+        `stack: ${error.stack}\n` +
         '--------------------------------------------------------------------',
     );
   }
