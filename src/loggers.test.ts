@@ -1,7 +1,7 @@
 import each from 'jest-each';
+import { Response, HTTPError } from 'got/dist/source';
 import { redact, redactSensitiveHeaders, redactSensitiveProps, GenericLogger } from './loggers';
 import { RequestOptions, Logger } from './interfaces';
-import { Response } from 'got/dist/source';
 
 describe('log redaction', () => {
   test('should deep clone options', () => {
@@ -150,7 +150,7 @@ describe('GenericLogger', () => {
         },
         message: 'Internal Server Error',
         stack: 'Error stack trace'
-      } as any;
+      } as unknown as HTTPError;
 
       genericLogger.logFailure(mockError);
 
@@ -159,7 +159,7 @@ describe('GenericLogger', () => {
       expect(firstArg).toEqual({});
       expect(typeof secondArg).toBe('string');
       expect(secondArg).toContain('POST https://api.example.com/users 500');
-      expect(secondArg).toContain('error:Internal Server Error');
+      expect(secondArg).toContain('error: Internal Server Error');
     });
   });
 });
