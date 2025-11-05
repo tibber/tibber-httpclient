@@ -147,9 +147,11 @@ export class HttpClient implements IHttpClient {
   async #requestJson<T>({ path, options }: { path: string; options: RequestOptions }): Promise<T> {
     const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
     try {
-      const responsePromise = this.#request(sanitizedPath, options);
-      const [response, json] = await Promise.all([responsePromise, responsePromise.json<T>()]);
+      const response = await this.#request(sanitizedPath, options);
       this.#logger.logSuccess(response, options);
+      // Parse JSON from the response body after logging
+      // This avoids keeping both the response and parsed JSON in memory simultaneously
+      const json = JSON.parse(response.body) as T;
       return json;
     } catch (error) {
       throw this.#logAndCreateError({ error, path: sanitizedPath });
