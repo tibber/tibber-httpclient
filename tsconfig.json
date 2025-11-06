@@ -17,6 +17,7 @@
     "./.prettierrc.json",
     "./package.json",
     "./.eslintrc.json",
+    "./renovate.json",
     "./babel.config.js",
     "./jest.config.js",
     "./jest-setup.js"
