@@ -5,11 +5,13 @@ workflows:
       - build:
           context:
             - NPM
+            - GITHUB
       - publish:
           requires:
             - build
           context:
             - NPM
+            - GITHUB
           filters:
             branches:
               only: master
