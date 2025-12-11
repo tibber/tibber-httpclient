@@ -20,7 +20,7 @@ jobs:
     working_directory: ~/package
     resource_class: small
     docker:
-      - image: cimg/node:24.11.0
+      - image: cimg/node:24.12.0
     steps:
       - checkout
       - run:
@@ -37,7 +37,7 @@ jobs:
     working_directory: ~/package
     resource_class: small
     docker:
-      - image: cimg/node:24.11.0
+      - image: cimg/node:24.12.0
     steps:
       - attach_workspace:
           at: .
