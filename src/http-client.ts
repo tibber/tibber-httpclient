@@ -1,3 +1,5 @@
+import http from 'node:http';
+import https from 'node:https';
 import got, { Response, Got, CancelableRequest, HTTPError, CancelError, Method, Headers, OptionsInit } from 'got';
 import NodeCache from 'node-cache';
 import { HttpClientConfig, HttpLogger, IHttpClient, Logger, RequestOptions } from './interfaces';
@@ -91,8 +93,13 @@ export class HttpClient implements IHttpClient {
   readonly #headerFunc: HeaderFunction | undefined;
 
   constructor(initParams?: HttpClientInitParams) {
+    const agent = {
+      http: new http.Agent({ keepAlive: true, keepAliveMsecs: 15_000 }),
+      https: new https.Agent({ keepAlive: true, keepAliveMsecs: 15_000 }),
+    };
+
     const gotOptions: OptionsInit = {
-      retry: {},
+      agent,
       ...initParams?.options,
       context: { ...initParams?.options?.context, ...initParams?.config },
     };

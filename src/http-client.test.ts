@@ -14,6 +14,7 @@ interface Todo {
 
 describe('http client', () => {
   let server: Server;
+  let connectionResetAttempts = 0;
 
   beforeAll(() => {
     server = createServer(async (req, res) => {
@@ -29,6 +30,17 @@ describe('http client', () => {
             res.setHeader('Content-Type', 'text/plain');
             res.end('200 OK');
           }, 200);
+          break;
+        case '/reset-first-request':
+          if (connectionResetAttempts === 0) {
+            connectionResetAttempts += 1;
+            req.socket.destroy();
+          } else {
+            connectionResetAttempts += 1;
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ ok: true }));
+          }
           break;
         default:
           res.statusCode = 200;
@@ -215,6 +227,22 @@ describe('http client', () => {
     expect(url in client.calls.patch).toBe(false);
     expect(url in client.calls.delete).toBe(false);
   });
+  test('GET retries on ECONNRESET and succeeds', async () => {
+    connectionResetAttempts = 0;
+    const client = new HttpClient({ prefixUrl: ServerUrl });
+    const response = await client.get<{ ok: boolean }>('reset-first-request');
+    expect(response.ok).toBe(true);
+    expect(connectionResetAttempts).toBe(2);
+  });
+
+  test('POST does not retry on ECONNRESET', async () => {
+    connectionResetAttempts = 0;
+    const client = new HttpClient({ prefixUrl: ServerUrl });
+    const error = await getError<RequestException>(async () => await client.post('reset-first-request', {}));
+    expect(error).toBeInstanceOf(RequestException);
+    expect(connectionResetAttempts).toBe(1);
+  });
+
 });
 
 class NoErrorThrownError extends Error {}
