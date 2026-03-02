@@ -1,3 +1,5 @@
+import http from 'node:http';
+import https from 'node:https';
 import got, { Response, Got, CancelableRequest, HTTPError, CancelError, Method, Headers, OptionsInit } from 'got';
 import NodeCache from 'node-cache';
 import { HttpClientConfig, HttpLogger, IHttpClient, Logger, RequestOptions } from './interfaces';
@@ -79,6 +81,7 @@ export type HttpClientInitParams = {
   config?: HttpClientConfig;
   options?: OptionsInit;
   headerFunc?: HeaderFunction;
+  agent?: { http?: http.Agent; https?: https.Agent };
 };
 
 export class HttpClient implements IHttpClient {
@@ -92,10 +95,13 @@ export class HttpClient implements IHttpClient {
 
   constructor(initParams?: HttpClientInitParams) {
     const gotOptions: OptionsInit = {
-      retry: {},
       ...initParams?.options,
       context: { ...initParams?.options?.context, ...initParams?.config },
     };
+
+    if (initParams?.agent) {
+      gotOptions.agent = initParams.agent;
+    }
 
     if (initParams?.prefixUrl !== undefined) {
       gotOptions.prefixUrl = initParams.prefixUrl;
