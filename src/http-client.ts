@@ -81,6 +81,12 @@ export type HttpClientInitParams = {
   config?: HttpClientConfig;
   options?: OptionsInit;
   headerFunc?: HeaderFunction;
+  /**
+   * When true, configures the HTTP/HTTPS agents with keep-alive and a 15-second
+   * keepAliveMsecs to prevent stale socket reuse (ECONNRESET) on very low-throughput
+   * connections where sockets can sit idle long enough for the remote to close them.
+   */
+  keepAlive?: boolean;
 };
 
 export class HttpClient implements IHttpClient {
@@ -93,13 +99,15 @@ export class HttpClient implements IHttpClient {
   readonly #headerFunc: HeaderFunction | undefined;
 
   constructor(initParams?: HttpClientInitParams) {
-    const agent = {
-      http: new http.Agent({ keepAlive: true, keepAliveMsecs: 15_000 }),
-      https: new https.Agent({ keepAlive: true, keepAliveMsecs: 15_000 }),
-    };
+    const agent = initParams?.keepAlive
+      ? {
+          http: new http.Agent({ keepAlive: true, keepAliveMsecs: 15_000 }),
+          https: new https.Agent({ keepAlive: true, keepAliveMsecs: 15_000 }),
+        }
+      : undefined;
 
     const gotOptions: OptionsInit = {
-      agent,
+      ...(agent !== undefined ? { agent } : {}),
       ...initParams?.options,
       context: { ...initParams?.options?.context, ...initParams?.config },
     };
