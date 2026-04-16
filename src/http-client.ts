@@ -78,6 +78,13 @@ export class ProblemDetailsError extends RequestException {
 export type HttpClientInitParams = {
   prefixUrl?: string;
   logger?: Logger;
+  /**
+   * The logger adapter to use.
+   *
+   * Not having this set will have it fallback
+   * to check if the constructor name is Pino
+   */
+  loggerAdapter?: 'pino' | 'generic';
   config?: HttpClientConfig;
   options?: OptionsInit;
   headerFunc?: HeaderFunction;
@@ -133,10 +140,21 @@ export class HttpClient implements IHttpClient {
     }
 
     if (initParams?.logger) {
-      this.#logger =
-        initParams.logger.constructor?.name === 'Pino'
-          ? new PinoLogger(initParams.logger)
-          : new GenericLogger(initParams.logger);
+      // Prefer explicit logger adapter from config instead
+      // of relying on constructor name which may break
+      // if the code which consumes this package is minified
+      if (initParams.loggerAdapter) {
+        if (initParams.loggerAdapter === 'pino') {
+          this.#logger = new PinoLogger(initParams.logger);
+        } else {
+          this.#logger = new GenericLogger(initParams.logger);
+        }
+      } else {
+        this.#logger =
+          initParams.logger.constructor?.name === 'Pino'
+            ? new PinoLogger(initParams.logger)
+            : new GenericLogger(initParams.logger);
+      }
     }
 
     if (initParams?.headerFunc) {

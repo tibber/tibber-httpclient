@@ -1,5 +1,6 @@
 import { CancelError, HTTPError } from 'got';
 import { createServer, Server } from 'http';
+import { Logger } from './interfaces';
 import { HttpClient, TestHttpClient, RequestException } from './http-client';
 
 const Port = 38080;
@@ -41,6 +42,11 @@ describe('http client', () => {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ ok: true }));
           }
+          break;
+        case '/logger-json':
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ ok: true }));
           break;
         default:
           res.statusCode = 200;
@@ -176,6 +182,85 @@ describe('http client', () => {
       expect(error.innerError.options.headers.nonheader).toBe('abc');
       expect(error.innerError.options.headers.test).toBe('123');
     }
+  });
+
+  describe('logger adapter selection', () => {
+    let mockLogger: jest.Mocked<Logger>;
+
+    beforeEach(() => {
+      mockLogger = {
+        info: jest.fn(),
+        debug: jest.fn(),
+        error: jest.fn(),
+      } as jest.Mocked<Logger>;
+    });
+
+    test('uses PinoLogger when loggerAdapter is pino', async () => {
+      const client = new HttpClient({
+        prefixUrl: ServerUrl,
+        logger: mockLogger,
+        loggerAdapter: 'pino',
+      });
+      await client.get('logger-json');
+      expect(mockLogger.debug).toHaveBeenCalled();
+      const [structured] = mockLogger.debug.mock.calls[0];
+      expect(structured).toEqual(
+        expect.objectContaining({
+          req: expect.objectContaining({ method: 'GET' }),
+          res: expect.objectContaining({ statusCode: 200 }),
+          responseTime: expect.any(Number),
+        }),
+      );
+    });
+
+    test('uses GenericLogger when loggerAdapter is generic', async () => {
+      const client = new HttpClient({
+        prefixUrl: ServerUrl,
+        logger: mockLogger,
+        loggerAdapter: 'generic',
+      });
+      await client.get('logger-json');
+      expect(mockLogger.debug).toHaveBeenCalled();
+      const [firstLine] = mockLogger.debug.mock.calls[0];
+      expect(typeof firstLine).toBe('string');
+      expect(firstLine).toMatch(/^GET /);
+    });
+
+    test('uses PinoLogger when loggerAdapter is omitted and logger constructor name is Pino', async () => {
+      class Pino implements Logger {
+        info = jest.fn();
+
+        debug = jest.fn();
+
+        error = jest.fn();
+      }
+      const pinoLikeLogger = new Pino();
+      const client = new HttpClient({
+        prefixUrl: ServerUrl,
+        logger: pinoLikeLogger,
+      });
+      await client.get('logger-json');
+      expect(pinoLikeLogger.debug).toHaveBeenCalled();
+      const [structured] = (pinoLikeLogger.debug as jest.Mock).mock.calls[0];
+      expect(structured).toEqual(
+        expect.objectContaining({
+          req: expect.objectContaining({ method: 'GET' }),
+          res: expect.objectContaining({ statusCode: 200 }),
+          responseTime: expect.any(Number),
+        }),
+      );
+    });
+
+    test('uses GenericLogger when loggerAdapter is omitted and constructor name is not Pino', async () => {
+      const client = new HttpClient({
+        prefixUrl: ServerUrl,
+        logger: mockLogger,
+      });
+      await client.get('logger-json');
+      const [firstLine] = mockLogger.debug.mock.calls[0];
+      expect(typeof firstLine).toBe('string');
+      expect(firstLine).toMatch(/^GET /);
+    });
   });
 
   test('Can clear TestHttpClient calls', async () => {
