@@ -1,6 +1,6 @@
 import http from 'node:http';
 import https from 'node:https';
-import got, { Response, Got, CancelableRequest, HTTPError, CancelError, Method, Headers, OptionsInit } from 'got';
+import got, { Response, Got, CancelableRequest, HTTPError, CancelError, Method, Headers, OptionsInit, RequestError } from 'got';
 import NodeCache from 'node-cache';
 import { HttpClientConfig, HttpLogger, IHttpClient, Logger, RequestOptions } from './interfaces';
 import { GenericLogger, NoOpLogger, PinoLogger } from './loggers';
@@ -191,9 +191,13 @@ export class HttpClient implements IHttpClient {
 
   #logAndCreateError({ error, path }: { error: unknown; path: string }) {
     let code;
+    if (error instanceof RequestError) {
+      // covers HTTPError and CancelError, but also connection-level failures
+      // (timeouts, ECONNREFUSED, ...) that never produce a response
+      this.#logger.logFailure(error);
+    }
     if (error instanceof HTTPError || error instanceof CancelError) {
       code = error.response?.statusCode ?? error.code;
-      this.#logger.logFailure(error);
       const contentType = error.response?.headers['content-type'] ?? '';
       if (
         (contentType.includes('application/problem+json') || contentType.includes('application/json')) &&

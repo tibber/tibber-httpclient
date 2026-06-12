@@ -1,5 +1,5 @@
 import each from 'jest-each';
-import { Response, HTTPError } from 'got/dist/source';
+import { Response, HTTPError, RequestError } from 'got/dist/source';
 import { redact, redactSensitiveHeaders, redactSensitiveProps, PinoLogger } from './loggers';
 import { RequestOptions, Logger } from './interfaces';
 
@@ -202,6 +202,40 @@ describe('PinoLogger', () => {
         responseTime: 300,
       });
       expect(message).toBe('POST https://api.example.com/users 500 Internal Server Error 300ms');
+    });
+
+    it('should log a meaningful message for connection errors without request, response or timings', () => {
+      const mockError = {
+        name: 'TimeoutError',
+        options: {
+          method: 'POST',
+          url: 'https://api.example.com/users',
+        },
+        message: "Timeout awaiting 'request' for 10000ms",
+        code: 'ETIMEDOUT',
+      } as unknown as RequestError;
+
+      pinoLogger.logFailure(mockError);
+
+      expect(mockLogger.error).toHaveBeenCalledTimes(1);
+      const [structuredData, message] = mockLogger.error.mock.calls[0];
+
+      expect(message).toBe('POST https://api.example.com/users ETIMEDOUT TimeoutError');
+      expect(message).not.toContain('undefined');
+      expect(structuredData).toEqual({
+        req: {
+          method: 'POST',
+          url: 'https://api.example.com/users',
+          failed: true,
+        },
+        res: {
+          failed: true,
+        },
+        err: {
+          message: "Timeout awaiting 'request' for 10000ms",
+          code: 'ETIMEDOUT',
+        },
+      });
     });
   });
 });
