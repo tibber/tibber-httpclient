@@ -155,14 +155,9 @@ describe('PinoLogger', () => {
       const mockError = {
         options: {
           method: 'POST',
+          url: 'https://api.example.com/users',
           headers: { 'content-type': 'application/json' },
           json: { name: 'test' }
-        },
-        request: {
-          options: {
-            method: 'POST',
-            url: 'https://api.example.com/users'
-          }
         },
         response: {
           statusCode: 500,

@@ -90,11 +90,9 @@ export class PinoLogger implements HttpLogger {
   }
 
   logFailure(error: RequestError): void {
-    const { response: res, request: req, timings } = error;
-    // requests that never connect have no request/response/timings — fall back to
-    // the always-present options so the message never interpolates undefined
-    const method = req?.options?.method ?? error.options.method;
-    const url = req?.options?.url ?? error.options.url;
+    const { response: res, timings } = error;
+    // connection-level failures have no response/timings, but options is always set
+    const { method, url } = error.options;
     const responseTimeMs = Number(timings?.end) - Number(timings?.start);
     const responseTime = Number.isNaN(responseTimeMs) ? undefined : responseTimeMs;
     const statusCode = res?.statusCode ?? error.code;

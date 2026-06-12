@@ -192,8 +192,7 @@ export class HttpClient implements IHttpClient {
   #logAndCreateError({ error, path }: { error: unknown; path: string }) {
     let code;
     if (error instanceof RequestError) {
-      // covers HTTPError and CancelError, but also connection-level failures
-      // (timeouts, ECONNREFUSED, ...) that never produce a response
+      // base class of HTTPError/CancelError — also catches connection-level failures
       this.#logger.logFailure(error);
     }
     if (error instanceof HTTPError || error instanceof CancelError) {
