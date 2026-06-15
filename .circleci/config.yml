@@ -44,5 +44,6 @@ jobs:
       - run:
           name: Deploy Package
           command: |
-            export NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud": "npm:registry.npmjs.org"}')
+            NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud": "npm:registry.npmjs.org"}')
+            export NPM_ID_TOKEN
             npm publish
