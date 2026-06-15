@@ -1,4 +1,4 @@
-import { CancelError, HTTPError, Response } from 'got/dist/source';
+import { RequestError, Response } from 'got/dist/source';
 import copy from 'fast-copy';
 import { genericLogRedactionKeyPatterns } from './log-redaction';
 import { HttpLogger, Logger, RequestOptions } from './interfaces';
@@ -8,7 +8,7 @@ export class NoOpLogger implements HttpLogger {
   logSuccess(_response: Response, _options: RequestOptions): void {}
 
   // eslint-disable-next-line class-methods-use-this
-  logFailure(_error: HTTPError | CancelError): void {}
+  logFailure(_error: RequestError): void {}
 }
 
 const tryStringifyJSON = (data: object | undefined | null, onfailureResult?: string): string=>{
@@ -43,9 +43,9 @@ export class GenericLogger implements HttpLogger {
     this.#logger.debug('request-options', tryStringifyJSON(redactedOptions).replace(/\\n/g, ''));
   }
 
-  logFailure(error: HTTPError | CancelError): void {
+  logFailure(error: RequestError): void {
     const { context, headers, method } = error.options;
-    const { requestUrl } = error.request ?? {};
+    const requestUrl = error.request?.requestUrl ?? error.options.url;
     const code = error.response?.statusCode ?? error.code;
     const { start, end, error: err } = error?.timings ?? {};
     const duration = err && end && start ? (err ?? end) - start : undefined;
@@ -89,16 +89,19 @@ export class PinoLogger implements HttpLogger {
     }, message);
   }
 
-  logFailure(error: HTTPError | CancelError): void {
-    const { response: res, request: req, timings } = error;
-    const responseTime = Number(timings?.end) - Number(timings?.start);
+  logFailure(error: RequestError): void {
+    const { response: res, timings } = error;
+    // connection-level failures have no response/timings, but options is always set
+    const { method, url } = error.options;
+    const responseTimeMs = Number(timings?.end) - Number(timings?.start);
+    const responseTime = Number.isNaN(responseTimeMs) ? undefined : responseTimeMs;
     const statusCode = res?.statusCode ?? error.code;
-    const statusMessage = res?.statusMessage ?? 'Error';
-    const message = `${req?.options?.method} ${req?.options?.url} ${statusCode} ${statusMessage} ${responseTime}ms`;
+    const statusMessage = res?.statusMessage ?? error.name;
+    const message = `${method} ${url} ${statusCode} ${statusMessage}${responseTime === undefined ? '' : ` ${responseTime}ms`}`;
     this.#logger.error({
       req: {
-        method: req?.options?.method,
-        url: req?.options?.url,
+        method,
+        url,
         failed: true,
       },
       res: {
