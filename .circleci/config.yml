@@ -44,5 +44,6 @@ jobs:
           command: |
             npm install -g npm@latest
             NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud": "npm:registry.npmjs.org"}')
+            echo "NPM_ID_TOKEN length: ${#NPM_ID_TOKEN}"
             export NPM_ID_TOKEN
-            npm publish
+            npm publish --loglevel verbose
