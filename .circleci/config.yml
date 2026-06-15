@@ -10,9 +10,6 @@ workflows:
             - build
           context:
             - GITHUB
-          filters:
-            branches:
-              only: master
 jobs:
   build:
     working_directory: ~/package
