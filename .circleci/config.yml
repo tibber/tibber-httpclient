@@ -42,7 +42,6 @@ jobs:
       - run:
           name: Deploy Package
           command: |
-            npm install -g npm@latest
             NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud": "npm:registry.npmjs.org"}')
             export NPM_ID_TOKEN
             npm publish
