@@ -18,7 +18,7 @@ jobs:
     working_directory: ~/package
     resource_class: small
     docker:
-      - image: cimg/node:24.11.0
+      - image: cimg/node:24.18.0
     steps:
       - checkout
       - run:
@@ -35,13 +35,18 @@ jobs:
     working_directory: ~/package
     resource_class: small
     docker:
-      - image: cimg/node:24.11.0
+      - image: cimg/node:24.18.0
     steps:
       - attach_workspace:
           at: .
       - run:
           name: Deploy Package
           command: |
+            V=$(node -p "require('./package.json').version")
+            if npm view "tibber-httpclient@$V" version >/dev/null 2>&1; then
+              echo "tibber-httpclient@$V already published, skipping"
+              exit 0
+            fi
             NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud": "npm:registry.npmjs.org"}')
             export NPM_ID_TOKEN
             npm publish
