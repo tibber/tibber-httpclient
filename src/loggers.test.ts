@@ -248,9 +248,9 @@ describe('redactUrl', () => {
     expect(redactUrl(input)).toBe(expected);
   });
 
-  test('should return undefined for missing or unparseable urls', () => {
+  test('should distinguish a missing url from an unparseable one', () => {
     expect(redactUrl(undefined)).toBeUndefined();
-    expect(redactUrl('not a url')).toBeUndefined();
+    expect(redactUrl('not a url')).toBe('<unparseable-url>');
   });
 });
 
@@ -263,31 +263,29 @@ describe('GenericLogger', () => {
     genericLogger = new GenericLogger(mockLogger);
   });
 
-  describe('logFailure', () => {
-    it('should not emit credentials from a real got Options instance', () => {
-      const options = new Options({
-        url: 'https://tokenuser:tokenpass@api.example.com/v1/things?key=google-api-key-value&page=2',
-        method: 'POST',
-        headers: { authorization: 'Bearer super-secret-token' },
-        json: { password: 'super-secret-password' },
-      });
-      const mockError = {
-        options,
-        message: 'Request failed',
-        stack: 'stack',
-        code: 'ERR_NON_2XX_3XX_RESPONSE',
-      } as unknown as RequestError;
-
-      genericLogger.logFailure(mockError);
-
-      const logged = mockLogger.error.mock.calls[0][0] as string;
-      expect(logged).not.toContain('super-secret-token');
-      expect(logged).not.toContain('super-secret-password');
-      expect(logged).not.toContain('google-api-key-value');
-      expect(logged).not.toContain('tokenpass');
-      expect(logged).not.toContain('could not serialize logged data');
-      expect(logged).toContain('<redacted>');
-      expect(logged).toContain('page=2');
+  it('logFailure should not emit credentials from a real got Options instance', () => {
+    const options = new Options({
+      url: 'https://tokenuser:tokenpass@api.example.com/v1/things?key=google-api-key-value&page=2',
+      method: 'POST',
+      headers: { authorization: 'Bearer super-secret-token' },
+      json: { password: 'super-secret-password' },
     });
+    const mockError = {
+      options,
+      message: 'Request failed',
+      stack: 'stack',
+      code: 'ERR_NON_2XX_3XX_RESPONSE',
+    } as unknown as RequestError;
+
+    genericLogger.logFailure(mockError);
+
+    const logged = mockLogger.error.mock.calls[0][0] as string;
+    expect(logged).not.toContain('super-secret-token');
+    expect(logged).not.toContain('super-secret-password');
+    expect(logged).not.toContain('google-api-key-value');
+    expect(logged).not.toContain('tokenpass');
+    expect(logged).not.toContain('could not serialize logged data');
+    expect(logged).toContain('<redacted>');
+    expect(logged).toContain('page=2');
   });
 });

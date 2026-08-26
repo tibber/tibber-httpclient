@@ -1,6 +1,6 @@
 import { RequestError, Response } from 'got/dist/source';
 import copy from 'fast-copy';
-import { genericLogRedactionKeyPatterns, redactRecordKeys, redactUrl } from './log-redaction';
+import { genericLogRedactionKeyPatterns, redactInPlace, redactRecordKeys, redactUrl } from './log-redaction';
 import { HttpLogger, Logger, RequestOptions } from './interfaces';
 
 export class NoOpLogger implements HttpLogger {
@@ -44,19 +44,19 @@ export class GenericLogger implements HttpLogger {
   }
 
   logFailure(error: RequestError): void {
-    const { context, method } = error.options;
-    const requestUrl = redactUrl(error.request?.requestUrl ?? error.options.url);
+    const { context, method, url, headers, json, form } = error.options;
+    const requestUrl = redactUrl(error.request?.requestUrl ?? url);
     const code = error.response?.statusCode ?? error.code;
     const { start, end, error: err } = error?.timings ?? {};
     const duration = err && end && start ? (err ?? end) - start : undefined;
 
-    const headers = redactRecordKeys(error.options.headers, genericLogRedactionKeyPatterns.headers);
-    const body = redactRecordKeys(error.options.json ?? error.options.form, genericLogRedactionKeyPatterns.props);
+    const redactedHeaders = redactRecordKeys(headers, genericLogRedactionKeyPatterns.headers);
+    const body = redactRecordKeys((json ?? form) as Record<string, unknown> | undefined, genericLogRedactionKeyPatterns.props);
     this.#logger.error(
       '\n' +
         '--------------------------------------------------------------------\n' +
         `${method} ${requestUrl} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
-        `headers: ${tryStringifyJSON(headers)}\n` +
+        `headers: ${tryStringifyJSON(redactedHeaders)}\n` +
         `request-options: ${tryStringifyJSON({ method, url: requestUrl, body, context }).replace(/\\n/g, '')}\n` +
         `error:${error.message}\n` +
         `stack:${error.stack}\n` +
@@ -130,25 +130,9 @@ export const redact = (options: RequestOptions) => {
 };
 
 export const redactSensitiveHeaders = (options: RequestOptions) => {
-  if (options.headers === undefined) return;
-
-  for (const prop of Object.keys(options.headers ?? {})) {
-    for (const propMatch of genericLogRedactionKeyPatterns.headers) {
-      if (!propMatch.test(prop)) continue;
-      // eslint-disable-next-line no-param-reassign
-      options.headers[prop] = '<redacted>';
-    }
-  }
+  redactInPlace(options.headers as Record<string, unknown> | undefined, genericLogRedactionKeyPatterns.headers);
 };
 
 export const redactSensitiveProps = (options: RequestOptions) => {
-  const jsonOrForm = options.json ?? options.form;
-  if (jsonOrForm === undefined) return;
-
-  for (const prop of Object.keys(jsonOrForm)) {
-    for (const propMatch of genericLogRedactionKeyPatterns.props) {
-      if (!propMatch.test(prop)) continue;
-      (jsonOrForm as Record<string, unknown>)[prop] = '<redacted>';
-    }
-  }
+  redactInPlace((options.json ?? options.form) as Record<string, unknown> | undefined, genericLogRedactionKeyPatterns.props);
 };
