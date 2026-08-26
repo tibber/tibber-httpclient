@@ -1,6 +1,6 @@
 import { RequestError, Response } from 'got/dist/source';
 import copy from 'fast-copy';
-import { genericLogRedactionKeyPatterns, redactUrl } from './log-redaction';
+import { genericLogRedactionKeyPatterns, redactRecordKeys, redactUrl } from './log-redaction';
 import { HttpLogger, Logger, RequestOptions } from './interfaces';
 
 export class NoOpLogger implements HttpLogger {
@@ -50,13 +50,14 @@ export class GenericLogger implements HttpLogger {
     const { start, end, error: err } = error?.timings ?? {};
     const duration = err && end && start ? (err ?? end) - start : undefined;
 
-    const redactedOptions = redact(error.options);
+    const headers = redactRecordKeys(error.options.headers, genericLogRedactionKeyPatterns.headers);
+    const body = redactRecordKeys(error.options.json ?? error.options.form, genericLogRedactionKeyPatterns.props);
     this.#logger.error(
       '\n' +
         '--------------------------------------------------------------------\n' +
         `${method} ${requestUrl} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
-        `headers: ${tryStringifyJSON(redactedOptions.headers)}\n` +
-        `request-options: ${tryStringifyJSON({ method, url: requestUrl, json: redactedOptions.json, form: redactedOptions.form, context }).replace(/\\n/g, '')}\n` +
+        `headers: ${tryStringifyJSON(headers)}\n` +
+        `request-options: ${tryStringifyJSON({ method, url: requestUrl, body, context }).replace(/\\n/g, '')}\n` +
         `error:${error.message}\n` +
         `stack:${error.stack}\n` +
         '--------------------------------------------------------------------',
