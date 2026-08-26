@@ -1,24 +1,33 @@
 import { Response } from 'got/dist/source';
+import { genericLogRedactionKeyPatterns, redactRecordKeys, redactUrl } from './log-redaction';
+
+type FailableRequest = {
+  method?: string;
+  url?: string;
+  headers?: Record<string, unknown>;
+  json?: Record<string, unknown>;
+  failed: boolean;
+};
 
 export const pinoSerializers = {
   bidirectional: {
-    req: (req: Request & { failed: boolean }) => {
+    req: (req: FailableRequest) => {
       if (req.failed) {
         return {
           method: req.method,
-          url: req.url,
-          headers: req.headers,
-          json: req.json,
+          url: redactUrl(req.url),
+          headers: redactRecordKeys(req.headers, genericLogRedactionKeyPatterns.headers),
+          json: redactRecordKeys(req.json, genericLogRedactionKeyPatterns.props),
         };
       }
 
-      return `${req.method} ${req.url}`;
+      return `${req.method} ${redactUrl(req.url)}`;
     },
     res: (res: Response & { failed: boolean }) => {
       if (res.failed) {
         return {
           statusCode: res.statusCode,
-          headers: res.headers,
+          headers: redactRecordKeys(res.headers, genericLogRedactionKeyPatterns.headers),
           body: res.body,
         };
       }

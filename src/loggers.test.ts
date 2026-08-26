@@ -1,6 +1,8 @@
 import each from 'jest-each';
 import { Response, HTTPError, RequestError } from 'got/dist/source';
-import { redact, redactSensitiveHeaders, redactSensitiveProps, PinoLogger } from './loggers';
+import { Options } from 'got';
+import { redact, redactSensitiveHeaders, redactSensitiveProps, GenericLogger, PinoLogger } from './loggers';
+import { redactUrl } from './log-redaction';
 import { RequestOptions, Logger } from './interfaces';
 
 describe('log redaction', () => {
@@ -231,6 +233,64 @@ describe('PinoLogger', () => {
           code: 'ETIMEDOUT',
         },
       });
+    });
+  });
+});
+
+describe('redactUrl', () => {
+  each`
+    input                                             | expected
+    ${'https://api.example.com/x?page=2'}             | ${'https://api.example.com/x?page=2'}
+    ${'https://api.example.com/x?key=abc'}            | ${'https://api.example.com/x?key=redacted'}
+    ${'https://api.example.com/x?api_key=abc'}        | ${'https://api.example.com/x?api_key=redacted'}
+    ${'https://api.example.com/x?apiKey=abc&page=2'}  | ${'https://api.example.com/x?apiKey=redacted&page=2'}
+    ${'https://api.example.com/x?access_token=abc'}   | ${'https://api.example.com/x?access_token=redacted'}
+    ${'https://user:pw@api.example.com/x'}            | ${'https://redacted:redacted@api.example.com/x'}
+    ${'https://tok@api.example.com/x'}                | ${'https://redacted@api.example.com/x'}
+  `.test('redact $input', ({ input, expected }) => {
+    expect(redactUrl(input)).toBe(expected);
+  });
+
+  test('should return undefined for missing or unparseable urls', () => {
+    expect(redactUrl(undefined)).toBeUndefined();
+    expect(redactUrl('not a url')).toBeUndefined();
+  });
+});
+
+describe('GenericLogger', () => {
+  let mockLogger: jest.Mocked<Logger>;
+  let genericLogger: GenericLogger;
+
+  beforeEach(() => {
+    mockLogger = { info: jest.fn(), error: jest.fn(), debug: jest.fn() };
+    genericLogger = new GenericLogger(mockLogger);
+  });
+
+  describe('logFailure', () => {
+    it('should not emit credentials from a real got Options instance', () => {
+      const options = new Options({
+        url: 'https://tokenuser:tokenpass@api.example.com/v1/things?key=google-api-key-value&page=2',
+        method: 'POST',
+        headers: { authorization: 'Bearer super-secret-token' },
+        json: { password: 'super-secret-password' },
+      });
+      const mockError = {
+        options,
+        message: 'Request failed',
+        stack: 'stack',
+        code: 'ERR_NON_2XX_3XX_RESPONSE',
+      } as unknown as RequestError;
+
+      genericLogger.logFailure(mockError);
+
+      const logged = mockLogger.error.mock.calls[0][0] as string;
+      expect(logged).not.toContain('super-secret-token');
+      expect(logged).not.toContain('super-secret-password');
+      expect(logged).not.toContain('google-api-key-value');
+      expect(logged).not.toContain('tokenpass');
+      expect(logged).not.toContain('could not serialize logged data');
+      expect(logged).toContain('<redacted>');
+      expect(logged).toContain('page=2');
     });
   });
 });
