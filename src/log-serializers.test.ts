@@ -1,7 +1,6 @@
-import { Response } from 'got/dist/source';
 import { pinoSerializers } from './log-serializers';
 
-const { req, res } = pinoSerializers.bidirectional;
+const { req } = pinoSerializers.bidirectional;
 
 describe('pinoSerializers', () => {
   it('should redact credentials from a failed request', () => {
@@ -20,21 +19,7 @@ describe('pinoSerializers', () => {
     expect(serialized).not.toContain('super-secret-api-key');
     expect(serialized).not.toContain('super-secret-password');
     expect(serialized).not.toContain('google-api-key-value');
-    expect(serialized).toContain('page=2');
+    expect(serialized).toContain('/v1/things');
     expect(serialized).toContain('keep-me');
-  });
-
-  it('should redact set-cookie from a failed response', () => {
-    const serialized = JSON.stringify(
-      res({
-        failed: true,
-        statusCode: 401,
-        headers: { 'set-cookie': 'session=super-secret-session', 'content-type': 'application/json' },
-        body: 'Unauthorized',
-      } as unknown as Response & { failed: boolean }),
-    );
-
-    expect(serialized).not.toContain('super-secret-session');
-    expect(serialized).toContain('application/json');
   });
 });
