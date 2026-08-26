@@ -28,20 +28,13 @@ export const pinoLogRedactionKeyPaths = [
   'req.*.client_secret',
 ];
 
-const secretQueryParams = [...genericLogRedactionKeyPatterns.props, /^key$/i, /api[_-]?key/i, /signature/i];
-
-const matchesAny = (patterns: RegExp[], key: string) => patterns.some((pattern) => pattern.test(key));
-
 export const redactUrl = (url: unknown): string | undefined => {
   if (!url) return undefined;
   try {
-    const parsed = new URL(String(url));
-    if (parsed.username) parsed.username = 'redacted';
-    if (parsed.password) parsed.password = 'redacted';
-    for (const key of parsed.searchParams.keys()) {
-      if (matchesAny(secretQueryParams, key)) parsed.searchParams.set(key, 'redacted');
-    }
-    return parsed.toString();
+    const asString = String(url);
+    if (!/[?#@]/.test(asString)) return asString;
+    const { protocol, host, pathname } = new URL(asString);
+    return `${protocol}//${host}${pathname}`;
   } catch {
     return '<unparseable-url>';
   }
@@ -51,7 +44,7 @@ export const redactInPlace = (record: Record<string, unknown> | undefined, patte
   if (!record) return;
   for (const key of Object.keys(record)) {
     // eslint-disable-next-line no-param-reassign
-    if (matchesAny(patterns, key)) record[key] = '<redacted>';
+    if (patterns.some((pattern) => pattern.test(key))) record[key] = '<redacted>';
   }
 };
 

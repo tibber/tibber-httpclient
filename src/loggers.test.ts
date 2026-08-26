@@ -66,6 +66,9 @@ describe('log redaction', () => {
     input | expected
       ${{ authorization: 'a' }} | ${{ authorization: '<redacted>' }},
       ${{ Authorization: 'a' }} | ${{ Authorization: '<redacted>' }},
+      ${{ cookie: 'c' }} | ${{ cookie: '<redacted>' }},
+      ${{ 'x-api-key': 'k' }} | ${{ 'x-api-key': '<redacted>' }},
+      ${{ 'content-type': 'j' }} | ${{ 'content-type': 'j' }},
   `.test('redact $input from headers', ({ input, expected }) => {
     const actual = { headers: input } as RequestOptions;
     redactSensitiveHeaders(actual);
@@ -240,17 +243,17 @@ describe('PinoLogger', () => {
 describe('redactUrl', () => {
   each`
     input                                             | expected
-    ${'https://api.example.com/x?page=2'}             | ${'https://api.example.com/x?page=2'}
-    ${'https://api.example.com/x?apiKey=abc&page=2'}  | ${'https://api.example.com/x?apiKey=redacted&page=2'}
-    ${'https://user:pw@api.example.com/x'}            | ${'https://redacted:redacted@api.example.com/x'}
-    ${'https://tok@api.example.com/x'}                | ${'https://redacted@api.example.com/x'}
+    ${'https://api.example.com/x'}                    | ${'https://api.example.com/x'}
+    ${'https://api.example.com/x?apiKey=a&page=2'}    | ${'https://api.example.com/x'}
+    ${'https://user:pw@api.example.com/x'}            | ${'https://api.example.com/x'}
+    ${'https://api.example.com:8443/x#frag'}          | ${'https://api.example.com:8443/x'}
   `.test('redact $input', ({ input, expected }) => {
     expect(redactUrl(input)).toBe(expected);
   });
 
-  test('should distinguish a missing url from an unparseable one', () => {
+  test('should not emit a secret-bearing url it cannot parse', () => {
     expect(redactUrl(undefined)).toBeUndefined();
-    expect(redactUrl('not a url')).toBe('<unparseable-url>');
+    expect(redactUrl('not a url?token=t')).toBe('<unparseable-url>');
   });
 });
 
@@ -286,6 +289,6 @@ describe('GenericLogger', () => {
     expect(logged).not.toContain('tokenpass');
     expect(logged).not.toContain('could not serialize logged data');
     expect(logged).toContain('<redacted>');
-    expect(logged).toContain('page=2');
+    expect(logged).toContain('/v1/things');
   });
 });
