@@ -6,25 +6,14 @@ import { redactUrl } from './log-redaction';
 import { RequestOptions, Logger } from './interfaces';
 
 describe('log redaction', () => {
-  test('should deep clone options', () => {
-    const options = {
-      headers: {
-        authorization: 'a',
-      },
-      json: {
-        password: 'p',
-      },
-    };
+  test('should redact without mutating the options it was given', () => {
+    const options = { headers: { authorization: 'a' }, json: { password: 'p' } };
+
     const actual = redact(options);
-    expect(actual).not.toBe(options);
-    expect(actual).toStrictEqual({
-      headers: {
-        authorization: '<redacted>',
-      },
-      json: {
-        password: '<redacted>',
-      },
-    });
+
+    expect(actual.headers).toStrictEqual({ authorization: '<redacted>' });
+    expect(actual.json).toStrictEqual({ password: '<redacted>' });
+    expect(options).toStrictEqual({ headers: { authorization: 'a' }, json: { password: 'p' } });
   });
 
   each`
@@ -247,13 +236,12 @@ describe('redactUrl', () => {
     ${'https://api.example.com/x?apiKey=a&page=2'}    | ${'https://api.example.com/x'}
     ${'https://user:pw@api.example.com/x'}            | ${'https://api.example.com/x'}
     ${'https://api.example.com:8443/x#frag'}          | ${'https://api.example.com:8443/x'}
+    ${'https://api.example.com/users/@me'}            | ${'https://api.example.com/users/@me'}
+    ${'/v1/things?key=a'}                             | ${'/v1/things'}
+    ${'not a url?token=t'}                            | ${'not a url'}
+    ${undefined}                                      | ${undefined}
   `.test('redact $input', ({ input, expected }) => {
     expect(redactUrl(input)).toBe(expected);
-  });
-
-  test('should not emit a secret-bearing url it cannot parse', () => {
-    expect(redactUrl(undefined)).toBeUndefined();
-    expect(redactUrl('not a url?token=t')).toBe('<unparseable-url>');
   });
 });
 
@@ -272,6 +260,8 @@ describe('GenericLogger', () => {
       method: 'POST',
       headers: { authorization: 'Bearer super-secret-token' },
       json: { password: 'super-secret-password' },
+      // HttpClient merges its HttpClientConfig into got's context
+      context: { bearerToken: 'super-secret-bearer', basicAuthPassword: 'super-secret-basic' },
     });
     const mockError = {
       options,
@@ -287,6 +277,8 @@ describe('GenericLogger', () => {
     expect(logged).not.toContain('super-secret-password');
     expect(logged).not.toContain('google-api-key-value');
     expect(logged).not.toContain('tokenpass');
+    expect(logged).not.toContain('super-secret-bearer');
+    expect(logged).not.toContain('super-secret-basic');
     expect(logged).not.toContain('could not serialize logged data');
     expect(logged).toContain('<redacted>');
     expect(logged).toContain('/v1/things');

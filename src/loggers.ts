@@ -1,6 +1,5 @@
 import { RequestError, Response } from 'got/dist/source';
-import copy from 'fast-copy';
-import { genericLogRedactionKeyPatterns, redactInPlace, redactRecordKeys, redactUrl } from './log-redaction';
+import { genericLogRedactionKeyPatterns, redactRecordKeys, redactUrl } from './log-redaction';
 import { HttpLogger, Logger, RequestOptions } from './interfaces';
 
 export class NoOpLogger implements HttpLogger {
@@ -11,18 +10,14 @@ export class NoOpLogger implements HttpLogger {
   logFailure(_error: RequestError): void {}
 }
 
-const tryStringifyJSON = (data: object | undefined | null, onfailureResult?: string): string=>{
-  if (!data){
-    return '';
-  }
+const tryStringifyJSON = (data: object | undefined | null): string => {
+  if (!data) return '';
   try {
-    return JSON.stringify(data);
+    return JSON.stringify(data).replace(/\\n/g, '');
+  } catch {
+    return 'could not serialize logged data';
   }
-  catch (e) {
-    return onfailureResult ?? 'could not serialize logged data';
-  }
-}
-
+};
 
 export class GenericLogger implements HttpLogger {
   readonly #logger: Logger;
@@ -34,13 +29,8 @@ export class GenericLogger implements HttpLogger {
   logSuccess(response: Response, options: RequestOptions): void {
     const { url, statusCode, timings } = response;
     const message = `${options.method} ${redactUrl(url)} ${statusCode} ${new Date().getTime() - timings.start} ms`;
-    if (options.method === 'GET') {
-      this.#logger.debug(message);
-    } else {
-      this.#logger.info(message);
-    }
-    const redactedOptions = redact(options);
-    this.#logger.debug('request-options', tryStringifyJSON(redactedOptions).replace(/\\n/g, ''));
+    this.#logger[options.method === 'GET' ? 'debug' : 'info'](message);
+    this.#logger.debug('request-options', tryStringifyJSON(redact(options)));
   }
 
   logFailure(error: RequestError): void {
@@ -49,15 +39,17 @@ export class GenericLogger implements HttpLogger {
     const code = error.response?.statusCode ?? error.code;
     const { start, end, error: err } = error?.timings ?? {};
     const duration = err && end && start ? (err ?? end) - start : undefined;
+    const { headers: headerPatterns, props: propPatterns } = genericLogRedactionKeyPatterns;
 
-    const redactedHeaders = redactRecordKeys(headers, genericLogRedactionKeyPatterns.headers);
-    const body = redactRecordKeys((json ?? form) as Record<string, unknown> | undefined, genericLogRedactionKeyPatterns.props);
     this.#logger.error(
       '\n' +
         '--------------------------------------------------------------------\n' +
         `${method} ${requestUrl} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
-        `headers: ${tryStringifyJSON(redactedHeaders)}\n` +
-        `request-options: ${tryStringifyJSON({ method, url: requestUrl, body, context }).replace(/\\n/g, '')}\n` +
+        `headers: ${tryStringifyJSON(redactRecordKeys(headers, headerPatterns))}\n` +
+        `request-options: ${tryStringifyJSON({
+          body: redactRecordKeys(json ?? form, propPatterns),
+          context: redactRecordKeys(context, propPatterns),
+        })}\n` +
         `error:${error.message}\n` +
         `stack:${error.stack}\n` +
         '--------------------------------------------------------------------',
@@ -122,17 +114,20 @@ export class PinoLogger implements HttpLogger {
   }
 }
 
-export const redact = (options: RequestOptions) => {
-  const clone = copy(options);
-  redactSensitiveHeaders(clone);
-  redactSensitiveProps(clone);
-  return clone;
-};
+export const redact = (options: RequestOptions) => ({
+  ...options,
+  headers: redactRecordKeys(options.headers, genericLogRedactionKeyPatterns.headers),
+  json: redactRecordKeys(options.json, genericLogRedactionKeyPatterns.props),
+  form: redactRecordKeys(options.form, genericLogRedactionKeyPatterns.props),
+  context: redactRecordKeys(options.context, genericLogRedactionKeyPatterns.props),
+});
 
+/* eslint-disable no-param-reassign */
 export const redactSensitiveHeaders = (options: RequestOptions) => {
-  redactInPlace(options.headers as Record<string, unknown> | undefined, genericLogRedactionKeyPatterns.headers);
+  options.headers = redactRecordKeys(options.headers, genericLogRedactionKeyPatterns.headers);
 };
 
 export const redactSensitiveProps = (options: RequestOptions) => {
-  redactInPlace((options.json ?? options.form) as Record<string, unknown> | undefined, genericLogRedactionKeyPatterns.props);
+  if (options.json) options.json = redactRecordKeys(options.json, genericLogRedactionKeyPatterns.props);
+  if (options.form) options.form = redactRecordKeys(options.form, genericLogRedactionKeyPatterns.props);
 };

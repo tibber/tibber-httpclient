@@ -30,27 +30,14 @@ export const pinoLogRedactionKeyPaths = [
 
 export const redactUrl = (url: unknown): string | undefined => {
   if (!url) return undefined;
-  try {
-    const asString = String(url);
-    if (!/[?#@]/.test(asString)) return asString;
-    const { protocol, host, pathname } = new URL(asString);
-    return `${protocol}//${host}${pathname}`;
-  } catch {
-    return '<unparseable-url>';
-  }
+  return String(url)
+    .split(/[?#]/)[0]
+    .replace(/^((?:[a-z][\w+.-]*:)?\/\/)[^/]*@/i, '$1');
 };
 
-export const redactInPlace = (record: Record<string, unknown> | undefined, patterns: RegExp[]): void => {
-  if (!record) return;
-  for (const key of Object.keys(record)) {
-    // eslint-disable-next-line no-param-reassign
-    if (patterns.some((pattern) => pattern.test(key))) record[key] = '<redacted>';
-  }
-};
-
-export const redactRecordKeys = (record: Record<string, unknown> | undefined, patterns: RegExp[]) => {
-  if (!record) return record;
-  const result = { ...record };
-  redactInPlace(result, patterns);
-  return result;
+export const redactRecordKeys = <T>(record: T, patterns: RegExp[]): T => {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return record;
+  const result = { ...record } as Record<string, unknown>;
+  for (const key of Object.keys(result)) if (patterns.some((pattern) => pattern.test(key))) result[key] = '<redacted>';
+  return result as T;
 };

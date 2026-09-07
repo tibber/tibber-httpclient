@@ -22,4 +22,8 @@ describe('pinoSerializers', () => {
     expect(serialized).toContain('/v1/things');
     expect(serialized).toContain('keep-me');
   });
+
+  it('should keep the path of the relative urls pino-http passes for incoming requests', () => {
+    expect(req({ failed: false, method: 'GET', url: '/v1/things?key=google-api-key-value' })).toBe('GET /v1/things');
+  });
 });
