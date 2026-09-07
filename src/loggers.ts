@@ -1,6 +1,5 @@
 import { RequestError, Response } from 'got/dist/source';
-import copy from 'fast-copy';
-import { genericLogRedactionKeyPatterns } from './log-redaction';
+import { genericLogRedactionKeyPatterns, redactRecordKeys, redactUrl } from './log-redaction';
 import { HttpLogger, Logger, RequestOptions } from './interfaces';
 
 export class NoOpLogger implements HttpLogger {
@@ -11,18 +10,14 @@ export class NoOpLogger implements HttpLogger {
   logFailure(_error: RequestError): void {}
 }
 
-const tryStringifyJSON = (data: object | undefined | null, onfailureResult?: string): string=>{
-  if (!data){
-    return '';
-  }
+const tryStringifyJSON = (data: object | undefined | null): string => {
+  if (!data) return '';
   try {
-    return JSON.stringify(data);
+    return JSON.stringify(data).replace(/\\n/g, '');
+  } catch {
+    return 'could not serialize logged data';
   }
-  catch (e) {
-    return onfailureResult ?? 'could not serialize logged data';
-  }
-}
-
+};
 
 export class GenericLogger implements HttpLogger {
   readonly #logger: Logger;
@@ -33,30 +28,28 @@ export class GenericLogger implements HttpLogger {
 
   logSuccess(response: Response, options: RequestOptions): void {
     const { url, statusCode, timings } = response;
-    const message = `${options.method} ${url} ${statusCode} ${new Date().getTime() - timings.start} ms`;
-    if (options.method === 'GET') {
-      this.#logger.debug(message);
-    } else {
-      this.#logger.info(message);
-    }
-    const redactedOptions = redact(options);
-    this.#logger.debug('request-options', tryStringifyJSON(redactedOptions).replace(/\\n/g, ''));
+    const message = `${options.method} ${redactUrl(url)} ${statusCode} ${new Date().getTime() - timings.start} ms`;
+    this.#logger[options.method === 'GET' ? 'debug' : 'info'](message);
+    this.#logger.debug('request-options', tryStringifyJSON(redact(options)));
   }
 
   logFailure(error: RequestError): void {
-    const { context, headers, method } = error.options;
-    const requestUrl = error.request?.requestUrl ?? error.options.url;
+    const { context, method, url, headers, json, form } = error.options;
+    const requestUrl = redactUrl(error.request?.requestUrl ?? url);
     const code = error.response?.statusCode ?? error.code;
     const { start, end, error: err } = error?.timings ?? {};
     const duration = err && end && start ? (err ?? end) - start : undefined;
+    const { headers: headerPatterns, props: propPatterns } = genericLogRedactionKeyPatterns;
 
-    const redactedOptions = redact(error.options);
     this.#logger.error(
       '\n' +
         '--------------------------------------------------------------------\n' +
         `${method} ${requestUrl} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
-        `headers: ${tryStringifyJSON(headers)}\n` +
-        `request-options: ${tryStringifyJSON({ ...redactedOptions, context }).replace(/\\n/g, '')}\n` +
+        `headers: ${tryStringifyJSON(redactRecordKeys(headers, headerPatterns))}\n` +
+        `request-options: ${tryStringifyJSON({
+          body: redactRecordKeys(json ?? form, propPatterns),
+          context: redactRecordKeys(context, propPatterns),
+        })}\n` +
         `error:${error.message}\n` +
         `stack:${error.stack}\n` +
         '--------------------------------------------------------------------',
@@ -75,11 +68,12 @@ export class PinoLogger implements HttpLogger {
     const { request: req, timings } = res;
     const level = req.options.method === 'GET' ? 'debug' : 'info';
     const responseTime = Number(timings?.end) - Number(timings?.start);
-    const message = `${req.options.method} ${req.options.url} ${res.statusCode} ${res.statusMessage} ${responseTime}ms`;
+    const url = redactUrl(req.options?.url);
+    const message = `${req.options.method} ${url} ${res.statusCode} ${res.statusMessage} ${responseTime}ms`;
     this.#logger[level]({
       req: {
         method: req.options?.method,
-        url: req.options?.url,
+        url,
       },
       res: {
         statusCode: res.statusCode,
@@ -92,7 +86,8 @@ export class PinoLogger implements HttpLogger {
   logFailure(error: RequestError): void {
     const { response: res, timings } = error;
     // connection-level failures have no response/timings, but options is always set
-    const { method, url } = error.options;
+    const { method } = error.options;
+    const url = redactUrl(error.options.url);
     const responseTimeMs = Number(timings?.end) - Number(timings?.start);
     const responseTime = Number.isNaN(responseTimeMs) ? undefined : responseTimeMs;
     const statusCode = res?.statusCode ?? error.code;
@@ -119,33 +114,20 @@ export class PinoLogger implements HttpLogger {
   }
 }
 
-export const redact = (options: RequestOptions) => {
-  const clone = copy(options);
-  redactSensitiveHeaders(clone);
-  redactSensitiveProps(clone);
-  return clone;
-};
+export const redact = (options: RequestOptions) => ({
+  ...options,
+  headers: redactRecordKeys(options.headers, genericLogRedactionKeyPatterns.headers),
+  json: redactRecordKeys(options.json, genericLogRedactionKeyPatterns.props),
+  form: redactRecordKeys(options.form, genericLogRedactionKeyPatterns.props),
+  context: redactRecordKeys(options.context, genericLogRedactionKeyPatterns.props),
+});
 
+/* eslint-disable no-param-reassign */
 export const redactSensitiveHeaders = (options: RequestOptions) => {
-  if (options.headers === undefined) return;
-
-  for (const prop of Object.keys(options.headers ?? {})) {
-    for (const propMatch of genericLogRedactionKeyPatterns.headers) {
-      if (!propMatch.test(prop)) continue;
-      // eslint-disable-next-line no-param-reassign
-      options.headers[prop] = '<redacted>';
-    }
-  }
+  options.headers = redactRecordKeys(options.headers, genericLogRedactionKeyPatterns.headers);
 };
 
 export const redactSensitiveProps = (options: RequestOptions) => {
-  const jsonOrForm = options.json ?? options.form;
-  if (jsonOrForm === undefined) return;
-
-  for (const prop of Object.keys(jsonOrForm)) {
-    for (const propMatch of genericLogRedactionKeyPatterns.props) {
-      if (!propMatch.test(prop)) continue;
-      (jsonOrForm as Record<string, unknown>)[prop] = '<redacted>';
-    }
-  }
+  if (options.json) options.json = redactRecordKeys(options.json, genericLogRedactionKeyPatterns.props);
+  if (options.form) options.form = redactRecordKeys(options.form, genericLogRedactionKeyPatterns.props);
 };

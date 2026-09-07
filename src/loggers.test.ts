@@ -1,28 +1,19 @@
 import each from 'jest-each';
 import { Response, HTTPError, RequestError } from 'got/dist/source';
-import { redact, redactSensitiveHeaders, redactSensitiveProps, PinoLogger } from './loggers';
+import { Options } from 'got';
+import { redact, redactSensitiveHeaders, redactSensitiveProps, GenericLogger, PinoLogger } from './loggers';
+import { redactUrl } from './log-redaction';
 import { RequestOptions, Logger } from './interfaces';
 
 describe('log redaction', () => {
-  test('should deep clone options', () => {
-    const options = {
-      headers: {
-        authorization: 'a',
-      },
-      json: {
-        password: 'p',
-      },
-    };
+  test('should redact without mutating the options it was given', () => {
+    const options = { headers: { authorization: 'a' }, json: { password: 'p' } };
+
     const actual = redact(options);
-    expect(actual).not.toBe(options);
-    expect(actual).toStrictEqual({
-      headers: {
-        authorization: '<redacted>',
-      },
-      json: {
-        password: '<redacted>',
-      },
-    });
+
+    expect(actual.headers).toStrictEqual({ authorization: '<redacted>' });
+    expect(actual.json).toStrictEqual({ password: '<redacted>' });
+    expect(options).toStrictEqual({ headers: { authorization: 'a' }, json: { password: 'p' } });
   });
 
   each`
@@ -64,6 +55,9 @@ describe('log redaction', () => {
     input | expected
       ${{ authorization: 'a' }} | ${{ authorization: '<redacted>' }},
       ${{ Authorization: 'a' }} | ${{ Authorization: '<redacted>' }},
+      ${{ cookie: 'c' }} | ${{ cookie: '<redacted>' }},
+      ${{ 'x-api-key': 'k' }} | ${{ 'x-api-key': '<redacted>' }},
+      ${{ 'content-type': 'j' }} | ${{ 'content-type': 'j' }},
   `.test('redact $input from headers', ({ input, expected }) => {
     const actual = { headers: input } as RequestOptions;
     redactSensitiveHeaders(actual);
@@ -232,5 +226,61 @@ describe('PinoLogger', () => {
         },
       });
     });
+  });
+});
+
+describe('redactUrl', () => {
+  each`
+    input                                             | expected
+    ${'https://api.example.com/x'}                    | ${'https://api.example.com/x'}
+    ${'https://api.example.com/x?apiKey=a&page=2'}    | ${'https://api.example.com/x'}
+    ${'https://user:pw@api.example.com/x'}            | ${'https://api.example.com/x'}
+    ${'https://api.example.com:8443/x#frag'}          | ${'https://api.example.com:8443/x'}
+    ${'https://api.example.com/users/@me'}            | ${'https://api.example.com/users/@me'}
+    ${'/v1/things?key=a'}                             | ${'/v1/things'}
+    ${'not a url?token=t'}                            | ${'not a url'}
+    ${undefined}                                      | ${undefined}
+  `.test('redact $input', ({ input, expected }) => {
+    expect(redactUrl(input)).toBe(expected);
+  });
+});
+
+describe('GenericLogger', () => {
+  let mockLogger: jest.Mocked<Logger>;
+  let genericLogger: GenericLogger;
+
+  beforeEach(() => {
+    mockLogger = { info: jest.fn(), error: jest.fn(), debug: jest.fn() };
+    genericLogger = new GenericLogger(mockLogger);
+  });
+
+  it('logFailure should not emit credentials from a real got Options instance', () => {
+    const options = new Options({
+      url: 'https://tokenuser:tokenpass@api.example.com/v1/things?key=google-api-key-value&page=2',
+      method: 'POST',
+      headers: { authorization: 'Bearer super-secret-token' },
+      json: { password: 'super-secret-password' },
+      // HttpClient merges its HttpClientConfig into got's context
+      context: { bearerToken: 'super-secret-bearer', basicAuthPassword: 'super-secret-basic' },
+    });
+    const mockError = {
+      options,
+      message: 'Request failed',
+      stack: 'stack',
+      code: 'ERR_NON_2XX_3XX_RESPONSE',
+    } as unknown as RequestError;
+
+    genericLogger.logFailure(mockError);
+
+    const logged = mockLogger.error.mock.calls[0][0] as string;
+    expect(logged).not.toContain('super-secret-token');
+    expect(logged).not.toContain('super-secret-password');
+    expect(logged).not.toContain('google-api-key-value');
+    expect(logged).not.toContain('tokenpass');
+    expect(logged).not.toContain('super-secret-bearer');
+    expect(logged).not.toContain('super-secret-basic');
+    expect(logged).not.toContain('could not serialize logged data');
+    expect(logged).toContain('<redacted>');
+    expect(logged).toContain('/v1/things');
   });
 });
