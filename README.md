@@ -7,6 +7,8 @@ The v2 version was updated to use the more actively developed `got` under the ho
 
 With `got` there is now also support for cancelling requests.
 
+The v5 version no longer bundles its runtime dependencies (`got`, `fast-copy`) into `dist`. They are resolved from `node_modules`, so security scanners see them and consumers can patch them via `resolutions`/`overrides`. Since `got` is ESM-only, this requires Node.js `^20.19.0 || >=22.12.0` (`require(esm)` support). Consumers that load this package in Jest must allow `got` and its dependencies to be transformed (see `jest.config.js`).
+
 See the unit tests for how to use this library.
 
 All options that can be supplied to instantiation or the HTTP requests are fully compatible with the `got` API.
