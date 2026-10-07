@@ -1,4 +1,5 @@
-import { CancelError, HTTPError } from 'got';
+import { inspect } from 'node:util';
+import { CancelError, HTTPError, ParseError } from 'got';
 import { createServer, Server } from 'http';
 import { Logger } from './interfaces';
 import { HttpClient, TestHttpClient, RequestException } from './http-client';
@@ -19,7 +20,7 @@ describe('http client', () => {
 
   beforeAll(() => {
     server = createServer(async (req, res) => {
-      switch (req.url) {
+      switch (req.url?.split('?')[0]) {
         case '/400':
           res.statusCode = 400;
           res.setHeader('Content-Type', 'text/plain');
@@ -328,6 +329,97 @@ describe('http client', () => {
     expect(connectionResetAttempts).toBe(1);
   });
 
+  describe('secret redaction', () => {
+    const secrets = [
+      'SECRET_PASSWORD',
+      'SECRET_BEARER',
+      'SECRET_BODY',
+      'SECRET_QUERY',
+      'SECRET_CONTEXT',
+      'SECRET_HEADER',
+      'SECRET_COOKIE',
+    ];
+    const basicAuth = Buffer.from('myname:SECRET_PASSWORD').toString('base64');
+
+    const expectNoSecrets = (output: string) => {
+      for (const secret of [...secrets, basicAuth]) {
+        expect(output).not.toContain(secret);
+      }
+    };
+
+    const serializations = (error: unknown) => [JSON.stringify(error), inspect(error, { depth: 10 })];
+
+    test.each([
+      ['basic auth', { basicAuthUserName: 'myname', basicAuthPassword: 'SECRET_PASSWORD' }],
+      ['bearer token', { bearerToken: 'SECRET_BEARER' }],
+    ])('thrown RequestException does not serialize %s credentials, body or query secrets', async (_, config) => {
+      const client = new HttpClient({
+        prefixUrl: ServerUrl,
+        config,
+        options: { context: { apiToken: 'SECRET_CONTEXT' } },
+      });
+
+      const error = await getError<RequestException>(
+        async () => await client.post('400?token=SECRET_QUERY', { clientSecret: 'SECRET_BODY' }),
+      );
+
+      expect(error).toBeInstanceOf(RequestException);
+      expect(error.message).toContain('token=<redacted>');
+      serializations(error).forEach(expectNoSecrets);
+      // still reachable for programmatic access
+      expect((error.innerError as HTTPError).options.headers.authorization).toBeDefined();
+    });
+
+    test.each([
+      ['cancelled', { path: 'wait', cancel: true, innerError: CancelError }],
+      ['unparseable', { path: 'not-json', cancel: false, innerError: ParseError }],
+    ])('%s request errors do not serialize credentials', async (_, { path, cancel, innerError }) => {
+      const client = new HttpClient({ prefixUrl: ServerUrl, config: { bearerToken: 'SECRET_BEARER' } });
+      const abortController = new AbortController();
+      if (cancel) setTimeout(() => abortController.abort(), 20);
+
+      const error = await getError<RequestException>(
+        async () => await client.get(path, { abortSignal: abortController.signal }),
+      );
+
+      expect(error.innerError).toBeInstanceOf(innerError);
+      serializations(error).forEach(expectNoSecrets);
+    });
+
+    test('raw() errors do not serialize credentials', async () => {
+      const client = new HttpClient({ prefixUrl: ServerUrl, config: { bearerToken: 'SECRET_BEARER' } });
+
+      const error = await getError(
+        async () => await client.raw('400', { method: 'POST', json: { password: 'SECRET_BODY' } }),
+      );
+
+      expect(error).toBeInstanceOf(HTTPError);
+      serializations(error).forEach(expectNoSecrets);
+    });
+
+    test('generic logger does not log credentials', async () => {
+      const logger = { info: jest.fn(), debug: jest.fn(), error: jest.fn() };
+      const client = new HttpClient({
+        prefixUrl: ServerUrl,
+        logger,
+        loggerAdapter: 'generic',
+        config: { basicAuthUserName: 'myname', basicAuthPassword: 'SECRET_PASSWORD' },
+        options: { context: { apiToken: 'SECRET_CONTEXT' } },
+      });
+
+      await getError(
+        async () =>
+          await client.post(
+            '400?token=SECRET_QUERY',
+            { clientSecret: 'SECRET_BODY' },
+            { headers: { 'x-api-key': 'SECRET_HEADER', cookie: 'SECRET_COOKIE' } },
+          ),
+      );
+
+      expect(logger.error).toHaveBeenCalled();
+      expectNoSecrets(JSON.stringify(logger.error.mock.calls));
+    });
+  });
 });
 
 class NoErrorThrownError extends Error {}

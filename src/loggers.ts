@@ -1,6 +1,6 @@
 import { RequestError, Response } from 'got/dist/source';
 import copy from 'fast-copy';
-import { genericLogRedactionKeyPatterns } from './log-redaction';
+import { genericLogRedactionKeyPatterns, redactUrl } from './log-redaction';
 import { HttpLogger, Logger, RequestOptions } from './interfaces';
 
 export class NoOpLogger implements HttpLogger {
@@ -24,6 +24,8 @@ const tryStringifyJSON = (data: object | undefined | null, onfailureResult?: str
 }
 
 
+const redactLoggedUrl = (url: URL | string | undefined) => (url === undefined ? undefined : redactUrl(url.toString()));
+
 export class GenericLogger implements HttpLogger {
   readonly #logger: Logger;
 
@@ -33,7 +35,7 @@ export class GenericLogger implements HttpLogger {
 
   logSuccess(response: Response, options: RequestOptions): void {
     const { url, statusCode, timings } = response;
-    const message = `${options.method} ${url} ${statusCode} ${new Date().getTime() - timings.start} ms`;
+    const message = `${options.method} ${redactUrl(url)} ${statusCode} ${new Date().getTime() - timings.start} ms`;
     if (options.method === 'GET') {
       this.#logger.debug(message);
     } else {
@@ -45,18 +47,20 @@ export class GenericLogger implements HttpLogger {
 
   logFailure(error: RequestError): void {
     const { context, headers, method } = error.options;
-    const requestUrl = error.request?.requestUrl ?? error.options.url;
+    const requestUrl = redactLoggedUrl(error.request?.requestUrl ?? error.options.url);
     const code = error.response?.statusCode ?? error.code;
     const { start, end, error: err } = error?.timings ?? {};
     const duration = err && end && start ? (err ?? end) - start : undefined;
 
     const redactedOptions = redact(error.options);
+    // context is redacted with the body-prop patterns
+    const { headers: redactedHeaders, json: redactedContext } = redact({ headers, json: context });
     this.#logger.error(
       '\n' +
         '--------------------------------------------------------------------\n' +
         `${method} ${requestUrl} ${code ?? 'unknown statusCode'} (${duration ?? ' - '} ms)\n` +
-        `headers: ${tryStringifyJSON(headers)}\n` +
-        `request-options: ${tryStringifyJSON({ ...redactedOptions, context }).replace(/\\n/g, '')}\n` +
+        `headers: ${tryStringifyJSON(redactedHeaders)}\n` +
+        `request-options: ${tryStringifyJSON({ ...redactedOptions, context: redactedContext }).replace(/\\n/g, '')}\n` +
         `error:${error.message}\n` +
         `stack:${error.stack}\n` +
         '--------------------------------------------------------------------',
@@ -74,12 +78,13 @@ export class PinoLogger implements HttpLogger {
   logSuccess(res: Response): void {
     const { request: req, timings } = res;
     const level = req.options.method === 'GET' ? 'debug' : 'info';
+    const url = redactLoggedUrl(req.options?.url);
     const responseTime = Number(timings?.end) - Number(timings?.start);
-    const message = `${req.options.method} ${req.options.url} ${res.statusCode} ${res.statusMessage} ${responseTime}ms`;
+    const message = `${req.options.method} ${url} ${res.statusCode} ${res.statusMessage} ${responseTime}ms`;
     this.#logger[level]({
       req: {
         method: req.options?.method,
-        url: req.options?.url,
+        url,
       },
       res: {
         statusCode: res.statusCode,
@@ -92,7 +97,8 @@ export class PinoLogger implements HttpLogger {
   logFailure(error: RequestError): void {
     const { response: res, timings } = error;
     // connection-level failures have no response/timings, but options is always set
-    const { method, url } = error.options;
+    const { method } = error.options;
+    const url = redactLoggedUrl(error.options.url);
     const responseTimeMs = Number(timings?.end) - Number(timings?.start);
     const responseTime = Number.isNaN(responseTimeMs) ? undefined : responseTimeMs;
     const statusCode = res?.statusCode ?? error.code;
