@@ -1,6 +1,7 @@
 import each from 'jest-each';
 import { Response, HTTPError, RequestError } from 'got/dist/source';
 import { redact, redactSensitiveHeaders, redactSensitiveProps, PinoLogger } from './loggers';
+import { redactUrl } from './log-redaction';
 import { RequestOptions, Logger } from './interfaces';
 
 describe('log redaction', () => {
@@ -64,10 +65,29 @@ describe('log redaction', () => {
     input | expected
       ${{ authorization: 'a' }} | ${{ authorization: '<redacted>' }},
       ${{ Authorization: 'a' }} | ${{ Authorization: '<redacted>' }},
+      ${{ cookie: 'c' }} | ${{ cookie: '<redacted>' }},
+      ${{ 'x-api-key': 'k' }} | ${{ 'x-api-key': '<redacted>' }},
+      ${{ 'x-auth-token': 't' }} | ${{ 'x-auth-token': '<redacted>' }},
+      ${{ 'content-type': 'application/json' }} | ${{ 'content-type': 'application/json' }},
   `.test('redact $input from headers', ({ input, expected }) => {
     const actual = { headers: input } as RequestOptions;
     redactSensitiveHeaders(actual);
     expect(actual.headers).toStrictEqual(expected);
+  });
+});
+
+describe('redactUrl', () => {
+  each`
+    input                                                       | expected
+    ${'https://user:pass@host/x'}                               | ${'https://<redacted>@host/x'}
+    ${'https://host/x?access_token=s&page=2'}                   | ${'https://host/x?access_token=<redacted>&page=2'}
+    ${'https://host/x?X-Amz-Signature=s&X-Amz-Credential=c'}    | ${'https://host/x?X-Amz-Signature=<redacted>&X-Amz-Credential=<redacted>'}
+    ${'https://host/x?api-key=s&code=c&jwt=j&auth=a'}           | ${'https://host/x?api-key=<redacted>&code=<redacted>&jwt=<redacted>&auth=<redacted>'}
+    ${'https://host/x?session_id=s&password=p'}                 | ${'https://host/x?session_id=<redacted>&password=<redacted>'}
+    ${'https://host/x?passengers=3&userId=42&author=a'}         | ${'https://host/x?passengers=3&userId=42&author=a'}
+    ${'undefined/x?token=s#frag'}                               | ${'undefined/x?token=<redacted>#frag'}
+  `.test('redacts $input', ({ input, expected }) => {
+    expect(redactUrl(input)).toBe(expected);
   });
 });
 
@@ -231,6 +251,36 @@ describe('PinoLogger', () => {
           code: 'ETIMEDOUT',
         },
       });
+    });
+  });
+
+  describe('url redaction', () => {
+    const url = new URL('https://api.example.com/users?access_token=SECRET&page=2');
+    const redacted = 'https://api.example.com/users?access_token=<redacted>&page=2';
+
+    it('redacts query secrets on success', () => {
+      pinoLogger.logSuccess({
+        request: { options: { method: 'GET', url } },
+        statusCode: 200,
+        statusMessage: 'OK',
+        timings: { start: 1000, end: 1200 },
+      } as unknown as Response);
+
+      const [structuredData, message] = mockLogger.debug.mock.calls[0];
+      expect(structuredData).toMatchObject({ req: { url: redacted } });
+      expect(message).toBe(`GET ${redacted} 200 OK 200ms`);
+    });
+
+    it('redacts query secrets on failure', () => {
+      pinoLogger.logFailure({
+        name: 'RequestError',
+        options: { method: 'GET', url },
+        code: 'ECONNREFUSED',
+      } as unknown as RequestError);
+
+      const [structuredData, message] = mockLogger.error.mock.calls[0];
+      expect(structuredData).toMatchObject({ req: { url: redacted } });
+      expect(message).not.toContain('SECRET');
     });
   });
 });

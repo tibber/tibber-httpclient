@@ -4,8 +4,22 @@ import got, { Response, Got, CancelableRequest, HTTPError, CancelError, Method, 
 import NodeCache from 'node-cache';
 import { HttpClientConfig, HttpLogger, IHttpClient, Logger, RequestOptions } from './interfaces';
 import { GenericLogger, NoOpLogger, PinoLogger } from './loggers';
+import { redactUrl } from './log-redaction';
 
 export type HeaderFunction = () => Headers;
+
+/**
+ * got errors carry the full request options (auth headers, request body, context) as enumerable
+ * properties, so any error serializer (pino, Sentry, util.inspect, JSON.stringify) would leak them.
+ * Keep them accessible, but out of serialized output.
+ */
+const hideSensitiveErrorProps = (error: RequestError) => {
+  for (const prop of ['options', 'input']) {
+    if (Object.prototype.hasOwnProperty.call(error, prop)) {
+      Object.defineProperty(error, prop, { enumerable: false });
+    }
+  }
+};
 
 export class RequestException extends Error {
   readonly statusCode;
@@ -116,6 +130,7 @@ export class HttpClient implements IHttpClient {
     const gotOptions: OptionsInit = {
       ...(agent !== undefined ? { agent } : {}),
       ...initParams?.options,
+      // TODO(next major): stop copying credentials into context; only the Authorization header needs them
       context: { ...initParams?.options?.context, ...initParams?.config },
     };
 
@@ -190,10 +205,13 @@ export class HttpClient implements IHttpClient {
   }
 
   #logAndCreateError({ error, path }: { error: unknown; path: string }) {
+    const url = redactUrl(`${this.#prefixUrl}/${path}`);
     let code;
     if (error instanceof RequestError) {
       // base class of HTTPError/CancelError — also catches connection-level failures
       this.#logger.logFailure(error);
+      // not a got beforeError hook: those don't run for CancelError/ParseError
+      hideSensitiveErrorProps(error);
     }
     if (error instanceof HTTPError || error instanceof CancelError) {
       code = error.response?.statusCode ?? error.code;
@@ -207,7 +225,7 @@ export class HttpClient implements IHttpClient {
           if (contentType.includes('application/json')) {
             const { message, stack } = error;
             return new RequestException({
-              message: `${this.#prefixUrl}/${path} ${message}`,
+              message: `${url} ${message}`,
               statusCode: code,
               innerError: error,
               responseBody,
@@ -238,7 +256,7 @@ export class HttpClient implements IHttpClient {
     if (error instanceof Error) {
       const { message, stack } = error;
       return new RequestException({
-        message: `${this.#prefixUrl}/${path} ${message}`,
+        message: `${url} ${message}`,
         statusCode: code,
         innerError: error,
         stack,
@@ -321,7 +339,12 @@ export class HttpClient implements IHttpClient {
    * @return {Promise<Response<T = unknown>>}
    */
   async raw<T = unknown>(path: string, options: OptionsInit): Promise<Response<T>> {
-    return (await this.#got(path, options)) as Response<T>;
+    try {
+      return (await this.#got(path, options)) as Response<T>;
+    } catch (error) {
+      if (error instanceof RequestError) hideSensitiveErrorProps(error);
+      throw error;
+    }
   }
 }
 
