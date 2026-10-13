@@ -1,8 +1,9 @@
 import http from 'node:http';
 import https from 'node:https';
+import { text } from 'node:stream/consumers';
 import got, { Response, Got, CancelableRequest, HTTPError, CancelError, Method, Headers, OptionsInit, RequestError } from 'got';
 import NodeCache from 'node-cache';
-import { HttpClientConfig, HttpLogger, IHttpClient, Logger, RequestOptions } from './interfaces';
+import { HttpClientConfig, HttpLogger, HttpMethodCall, IHttpClient, Logger, RequestOptions } from './interfaces';
 import { GenericLogger, NoOpLogger, PinoLogger } from './loggers';
 import { redactUrl } from './log-redaction';
 
@@ -346,9 +347,40 @@ export class HttpClient implements IHttpClient {
       throw error;
     }
   }
-}
 
-type HttpMethodCall = 'get' | 'post' | 'put' | 'patch' | 'delete';
+  async stream(
+    method: HttpMethodCall,
+    path: string,
+    data?: unknown,
+    options?: Omit<RequestOptions, 'json'>,
+  ): Promise<AsyncIterable<Uint8Array>> {
+    const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
+    const { abortSignal, ...gotOptions } = this.#processOptions(method.toUpperCase() as Method, data, options);
+    const request = this.#got.stream(sanitizedPath, { ...gotOptions, throwHttpErrors: false });
+    abortSignal?.addEventListener('abort', () => request.destroy(new CancelError(request)));
+    try {
+      const response = await new Promise<Response>((resolve, reject) => {
+        request.once('response', resolve).once('error', reject);
+      });
+      if (!response.ok) {
+        response.body = await text(request);
+        throw new HTTPError(response);
+      }
+      this.#logger.logSuccess(response, gotOptions);
+      return this.#rethrowAsRequestException(request, sanitizedPath);
+    } catch (error) {
+      throw this.#logAndCreateError({ error, path: sanitizedPath });
+    }
+  }
+
+  async *#rethrowAsRequestException(chunks: AsyncIterable<Uint8Array>, path: string) {
+    try {
+      yield* chunks;
+    } catch (error) {
+      throw this.#logAndCreateError({ error, path });
+    }
+  }
+}
 
 type RoutePayloads = { [p in HttpMethodCall]?: Record<string, unknown> };
 
