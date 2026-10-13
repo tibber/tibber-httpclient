@@ -1,6 +1,5 @@
 import http from 'node:http';
 import https from 'node:https';
-import { text } from 'node:stream/consumers';
 import got, { Response, Got, CancelableRequest, HTTPError, CancelError, Method, Headers, OptionsInit, RequestError } from 'got';
 import NodeCache from 'node-cache';
 import { HttpClientConfig, HttpLogger, HttpMethodCall, IHttpClient, Logger, RequestOptions } from './interfaces';
@@ -356,26 +355,25 @@ export class HttpClient implements IHttpClient {
   ): Promise<AsyncIterable<Uint8Array>> {
     const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
     const { abortSignal, ...gotOptions } = this.#processOptions(method.toUpperCase() as Method, data, options);
-    const request = this.#got.stream(sanitizedPath, { ...gotOptions, throwHttpErrors: false });
-    abortSignal?.addEventListener('abort', () => request.destroy(new CancelError(request)));
+    const request = this.#got.stream(sanitizedPath, gotOptions);
+    const abort = () => request.destroy(new CancelError(request));
+    const removeAbortListener = () => abortSignal?.removeEventListener('abort', abort);
+    abortSignal?.addEventListener('abort', abort);
+    request.once('end', removeAbortListener).once('close', removeAbortListener);
     try {
       const response = await new Promise<Response>((resolve, reject) => {
         request.once('response', resolve).once('error', reject);
       });
-      if (!response.ok) {
-        response.body = await text(request);
-        throw new HTTPError(response);
-      }
-      this.#logger.logSuccess(response, gotOptions);
-      return this.#rethrowAsRequestException(request, sanitizedPath);
+      return this.#readBody(request, response, gotOptions, sanitizedPath);
     } catch (error) {
       throw this.#logAndCreateError({ error, path: sanitizedPath });
     }
   }
 
-  async *#rethrowAsRequestException(chunks: AsyncIterable<Uint8Array>, path: string) {
+  async *#readBody(chunks: AsyncIterable<Uint8Array>, response: Response, options: RequestOptions, path: string) {
     try {
       yield* chunks;
+      this.#logger.logSuccess(response, options);
     } catch (error) {
       throw this.#logAndCreateError({ error, path });
     }
@@ -444,7 +442,7 @@ export interface ICachedHttpClient extends IHttpClient {
   getNoCache<T>(route: string): Promise<T>;
 }
 export class CachedClient implements ICachedHttpClient {
-  readonly #httpClient: IHttpClient;
+  readonly #httpClient: HttpClient;
 
   readonly #logger: Logger;
 
@@ -491,6 +489,10 @@ export class CachedClient implements ICachedHttpClient {
 
   public async delete(route: string): Promise<void> {
     return await this.#httpClient.delete(route);
+  }
+
+  public async stream(...args: Parameters<HttpClient['stream']>): Promise<AsyncIterable<Uint8Array>> {
+    return await this.#httpClient.stream(...args);
   }
 
   async raw<T = unknown>(path: string, options: Omit<RequestOptions, 'json'>): Promise<Response<T>> {

@@ -148,9 +148,7 @@ describe('http client', () => {
     ['get', (client: HttpClient) => client.get('400')],
     ['stream', (client: HttpClient) => client.stream('get', '400')],
   ])('Error %s request', async (_, request) => {
-    const client = new HttpClient({
-      prefixUrl: 'http://localhost:38080',
-    });
+    const client = new HttpClient({ prefixUrl: ServerUrl });
 
     const error = await getError<RequestException>(async () => await request(client));
     expect(error).toBeInstanceOf(RequestException);
@@ -343,13 +341,12 @@ describe('http client', () => {
 
   describe('stream', () => {
     const client = new HttpClient({ prefixUrl: ServerUrl });
-    const nextText = async (chunks: AsyncIterator<Uint8Array>) => Buffer.from((await chunks.next()).value).toString();
 
     test('yields chunks before the response has ended', async () => {
       const chunks = (await client.stream('post', 'stream', { id: 1 }))[Symbol.asyncIterator]();
-      expect(await nextText(chunks)).toBe('[{"id":1},');
+      expect((await chunks.next()).value).toEqual(Buffer.from('[{"id":1},'));
       pendingStream.end('2]');
-      expect(await nextText(chunks)).toBe('2]');
+      expect((await chunks.next()).value).toEqual(Buffer.from('2]'));
       expect((await chunks.next()).done).toBe(true);
     });
 
