@@ -1,7 +1,9 @@
 import { inspect } from 'node:util';
 import { CancelError, HTTPError, ParseError } from 'got';
-import { createServer, Server, ServerResponse } from 'http';
+import { createServer, Server } from 'http';
+import { pipeline } from 'node:stream';
 import { text } from 'node:stream/consumers';
+import { createGzip, Gzip } from 'node:zlib';
 import { Logger } from './interfaces';
 import { HttpClient, TestHttpClient, RequestException } from './http-client';
 
@@ -18,7 +20,7 @@ interface Todo {
 describe('http client', () => {
   let server: Server;
   let connectionResetAttempts = 0;
-  let pendingStream: ServerResponse;
+  let pendingStream: Gzip;
 
   beforeAll(() => {
     server = createServer(async (req, res) => {
@@ -53,8 +55,11 @@ describe('http client', () => {
           break;
         case '/stream':
           res.setHeader('Content-Type', 'application/json');
-          res.write(`[${await text(req)},`);
-          pendingStream = res;
+          res.setHeader('Content-Encoding', 'gzip');
+          pendingStream = createGzip();
+          pipeline(pendingStream, res, () => {});
+          pendingStream.write(`[${await text(req)},`);
+          pendingStream.flush();
           break;
         default:
           res.statusCode = 200;
