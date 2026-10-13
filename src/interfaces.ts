@@ -30,6 +30,10 @@ export interface IHttpClient {
   put<T>(path: string, data?: unknown, options?: Omit<RequestOptions, 'json'>): Promise<T>;
   delete(path: string, options?: Omit<RequestOptions, 'json'>, data?: unknown): Promise<void>;
   raw<T = unknown>(path: string, options: Omit<RequestOptions, 'json'>): Promise<Response<T>>;
+  /**
+   * Yields the response body as it arrives. The request is sent on the first iteration,
+   * so HTTP errors are thrown from the loop, not from this call.
+   */
   stream?(
     method: HttpMethodCall,
     path: string,
