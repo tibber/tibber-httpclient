@@ -30,7 +30,7 @@ export interface IHttpClient {
   put<T>(path: string, data?: unknown, options?: Omit<RequestOptions, 'json'>): Promise<T>;
   delete(path: string, options?: Omit<RequestOptions, 'json'>, data?: unknown): Promise<void>;
   raw<T = unknown>(path: string, options: Omit<RequestOptions, 'json'>): Promise<Response<T>>;
-  /** Streams the response body as it arrives. The request is sent lazily, so all errors are raised during iteration. */
+  /** Streams the response body as it arrives. The request is sent lazily, so any errors are raised during iteration. */
   stream?(
     method: HttpMethodCall,
     path: string,
