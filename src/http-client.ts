@@ -347,35 +347,24 @@ export class HttpClient implements IHttpClient {
     }
   }
 
-  async stream(
+  async *stream(
     method: HttpMethodCall,
     path: string,
     data?: unknown,
     options?: Omit<RequestOptions, 'json'>,
-  ): Promise<AsyncIterable<Uint8Array>> {
+  ): AsyncGenerator<Uint8Array> {
     const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
     const { abortSignal, ...gotOptions } = this.#processOptions(method.toUpperCase() as Method, data, options);
     const request = this.#got.stream(sanitizedPath, gotOptions);
     const abort = () => request.destroy(new CancelError(request));
-    const removeAbortListener = () => abortSignal?.removeEventListener('abort', abort);
     abortSignal?.addEventListener('abort', abort);
-    request.once('end', removeAbortListener).once('close', removeAbortListener);
     try {
-      const response = await new Promise<Response>((resolve, reject) => {
-        request.once('response', resolve).once('error', reject);
-      });
-      return this.#readBody(request, response, gotOptions, sanitizedPath);
+      yield* request;
+      this.#logger.logSuccess(request.response as Response, gotOptions);
     } catch (error) {
       throw this.#logAndCreateError({ error, path: sanitizedPath });
-    }
-  }
-
-  async *#readBody(chunks: AsyncIterable<Uint8Array>, response: Response, options: RequestOptions, path: string) {
-    try {
-      yield* chunks;
-      this.#logger.logSuccess(response, options);
-    } catch (error) {
-      throw this.#logAndCreateError({ error, path });
+    } finally {
+      abortSignal?.removeEventListener('abort', abort);
     }
   }
 }
@@ -491,8 +480,8 @@ export class CachedClient implements ICachedHttpClient {
     return await this.#httpClient.delete(route);
   }
 
-  public async stream(...args: Parameters<HttpClient['stream']>): Promise<AsyncIterable<Uint8Array>> {
-    return await this.#httpClient.stream(...args);
+  public stream(...args: Parameters<HttpClient['stream']>): AsyncGenerator<Uint8Array> {
+    return this.#httpClient.stream(...args);
   }
 
   async raw<T = unknown>(path: string, options: Omit<RequestOptions, 'json'>): Promise<Response<T>> {

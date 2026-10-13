@@ -35,7 +35,7 @@ export interface IHttpClient {
     path: string,
     data?: unknown,
     options?: Omit<RequestOptions, 'json'>,
-  ): Promise<AsyncIterable<Uint8Array>>;
+  ): AsyncIterable<Uint8Array>;
 }
 
 export interface HttpClientConfig {

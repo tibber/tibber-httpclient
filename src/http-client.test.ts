@@ -130,7 +130,7 @@ describe('http client', () => {
 
   test.each<[string, (client: HttpClient, abortSignal: AbortSignal) => Promise<unknown>]>([
     ['get', (client, abortSignal) => client.get('wait', { abortSignal })],
-    ['stream', (client, abortSignal) => client.stream('get', 'wait', undefined, { abortSignal })],
+    ['stream', (client, abortSignal) => client.stream('get', 'wait', undefined, { abortSignal }).next()],
   ])('Canceling %s request with AbortSignal', async (_, request) => {
     const controller = new AbortController();
     const client = new HttpClient({ prefixUrl: ServerUrl });
@@ -146,7 +146,7 @@ describe('http client', () => {
 
   test.each([
     ['get', (client: HttpClient) => client.get('400')],
-    ['stream', (client: HttpClient) => client.stream('get', '400')],
+    ['stream', (client: HttpClient) => client.stream('get', '400').next()],
   ])('Error %s request', async (_, request) => {
     const client = new HttpClient({ prefixUrl: ServerUrl });
 
@@ -343,7 +343,7 @@ describe('http client', () => {
     const client = new HttpClient({ prefixUrl: ServerUrl });
 
     test('yields chunks before the response has ended', async () => {
-      const chunks = (await client.stream('post', 'stream', { id: 1 }))[Symbol.asyncIterator]();
+      const chunks = client.stream('post', 'stream', { id: 1 });
       expect((await chunks.next()).value).toEqual(Buffer.from('[{"id":1},'));
       pendingStream.end('2]');
       expect((await chunks.next()).value).toEqual(Buffer.from('2]'));
@@ -351,7 +351,7 @@ describe('http client', () => {
     });
 
     test('throws a RequestException when the body is cut off', async () => {
-      const chunks = (await client.stream('get', 'stream'))[Symbol.asyncIterator]();
+      const chunks = client.stream('get', 'stream');
       await chunks.next();
       pendingStream.destroy();
       expect(await getError(async () => await chunks.next())).toBeInstanceOf(RequestException);
