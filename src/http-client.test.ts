@@ -1,6 +1,9 @@
 import { inspect } from 'node:util';
 import { CancelError, HTTPError, ParseError } from 'got';
 import { createServer, Server } from 'http';
+import { pipeline } from 'node:stream';
+import { text } from 'node:stream/consumers';
+import { createGzip, Gzip } from 'node:zlib';
 import { Logger } from './interfaces';
 import { HttpClient, TestHttpClient, RequestException } from './http-client';
 
@@ -17,14 +20,15 @@ interface Todo {
 describe('http client', () => {
   let server: Server;
   let connectionResetAttempts = 0;
+  let pendingStream: Gzip;
 
   beforeAll(() => {
     server = createServer(async (req, res) => {
       switch (req.url?.split('?')[0]) {
         case '/400':
           res.statusCode = 400;
-          res.setHeader('Content-Type', 'text/plain');
-          res.end('400 Bad Request');
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ reason: 'bad' }));
           break;
         case '/wait':
           setTimeout(() => {
@@ -48,6 +52,14 @@ describe('http client', () => {
           res.statusCode = 200;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ ok: true }));
+          break;
+        case '/stream':
+          res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Content-Encoding', 'gzip');
+          pendingStream = createGzip();
+          pipeline(pendingStream, res, () => {});
+          pendingStream.write(`[${await text(req)},`);
+          pendingStream.flush();
           break;
         default:
           res.statusCode = 200;
@@ -121,7 +133,10 @@ describe('http client', () => {
     await client.delete('posts/1', undefined, { data: 'dummy' });
   });
 
-  test('Canceling request with AbortSignal', async () => {
+  test.each<[string, (client: HttpClient, abortSignal: AbortSignal) => Promise<unknown>]>([
+    ['get', (client, abortSignal) => client.get('wait', { abortSignal })],
+    ['stream', (client, abortSignal) => client.stream('get', 'wait', undefined, { abortSignal }).next()],
+  ])('Canceling %s request with AbortSignal', async (_, request) => {
     const controller = new AbortController();
     const client = new HttpClient({ prefixUrl: ServerUrl });
 
@@ -129,21 +144,21 @@ describe('http client', () => {
       controller.abort();
     }, 100);
 
-    const error = await getError<RequestException>(
-      async () => await client.get('wait', { abortSignal: controller.signal }),
-    );
+    const error = await getError<RequestException>(async () => await request(client, controller.signal));
     expect(error).toBeInstanceOf(RequestException);
     expect(error.innerError).toBeInstanceOf(CancelError);
   });
 
-  test('Error request', async () => {
-    const client = new HttpClient({
-      prefixUrl: 'http://localhost:38080',
-    });
+  test.each([
+    ['get', (client: HttpClient) => client.get('400')],
+    ['stream', (client: HttpClient) => client.stream('get', '400').next()],
+  ])('Error %s request', async (_, request) => {
+    const client = new HttpClient({ prefixUrl: ServerUrl });
 
-    const error = await getError<RequestException>(async () => await client.get('400'));
+    const error = await getError<RequestException>(async () => await request(client));
     expect(error).toBeInstanceOf(RequestException);
     expect(error.statusCode).toBe(400);
+    expect(error.responseBody).toEqual({ reason: 'bad' });
   });
 
   test('Create basic auth header', async () => {
@@ -327,6 +342,25 @@ describe('http client', () => {
     const error = await getError<RequestException>(async () => await client.post('reset-first-request', {}));
     expect(error).toBeInstanceOf(RequestException);
     expect(connectionResetAttempts).toBe(1);
+  });
+
+  describe('stream', () => {
+    const client = new HttpClient({ prefixUrl: ServerUrl });
+
+    test('yields chunks before the response has ended', async () => {
+      const chunks = client.stream('post', 'stream', { id: 1 });
+      expect((await chunks.next()).value).toEqual(Buffer.from('[{"id":1},'));
+      pendingStream.end('2]');
+      expect((await chunks.next()).value).toEqual(Buffer.from('2]'));
+      expect((await chunks.next()).done).toBe(true);
+    });
+
+    test('throws a RequestException when the body is cut off', async () => {
+      const chunks = client.stream('get', 'stream');
+      await chunks.next();
+      pendingStream.destroy();
+      expect(await getError(async () => await chunks.next())).toBeInstanceOf(RequestException);
+    });
   });
 
   describe('secret redaction', () => {

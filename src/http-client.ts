@@ -2,7 +2,7 @@ import http from 'node:http';
 import https from 'node:https';
 import got, { Response, Got, CancelableRequest, HTTPError, CancelError, Method, Headers, OptionsInit, RequestError } from 'got';
 import NodeCache from 'node-cache';
-import { HttpClientConfig, HttpLogger, IHttpClient, Logger, RequestOptions } from './interfaces';
+import { HttpClientConfig, HttpLogger, HttpMethodCall, IHttpClient, Logger, RequestOptions } from './interfaces';
 import { GenericLogger, NoOpLogger, PinoLogger } from './loggers';
 import { redactUrl } from './log-redaction';
 
@@ -346,9 +346,28 @@ export class HttpClient implements IHttpClient {
       throw error;
     }
   }
-}
 
-type HttpMethodCall = 'get' | 'post' | 'put' | 'patch' | 'delete';
+  async *stream(
+    method: HttpMethodCall,
+    path: string,
+    data?: unknown,
+    options?: Omit<RequestOptions, 'json'>,
+  ): AsyncGenerator<Uint8Array> {
+    const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
+    const { abortSignal, ...gotOptions } = this.#processOptions(method.toUpperCase() as Method, data, options);
+    const request = this.#got.stream(sanitizedPath, gotOptions);
+    const abort = () => request.destroy(new CancelError(request));
+    abortSignal?.addEventListener('abort', abort);
+    try {
+      yield* request;
+      this.#logger.logSuccess(request.response as Response, gotOptions);
+    } catch (error) {
+      throw this.#logAndCreateError({ error, path: sanitizedPath });
+    } finally {
+      abortSignal?.removeEventListener('abort', abort);
+    }
+  }
+}
 
 type RoutePayloads = { [p in HttpMethodCall]?: Record<string, unknown> };
 
@@ -412,7 +431,7 @@ export interface ICachedHttpClient extends IHttpClient {
   getNoCache<T>(route: string): Promise<T>;
 }
 export class CachedClient implements ICachedHttpClient {
-  readonly #httpClient: IHttpClient;
+  readonly #httpClient: HttpClient;
 
   readonly #logger: Logger;
 
@@ -459,6 +478,10 @@ export class CachedClient implements ICachedHttpClient {
 
   public async delete(route: string): Promise<void> {
     return await this.#httpClient.delete(route);
+  }
+
+  public stream(...args: Parameters<HttpClient['stream']>): AsyncGenerator<Uint8Array> {
+    return this.#httpClient.stream(...args);
   }
 
   async raw<T = unknown>(path: string, options: Omit<RequestOptions, 'json'>): Promise<Response<T>> {
