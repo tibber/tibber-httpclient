@@ -1,5 +1,5 @@
 import { inspect } from 'node:util';
-import { CancelError, HTTPError, ParseError } from 'got';
+import { CancelError, HTTPError, ParseError, TimeoutError } from 'got';
 import { createServer, Server } from 'http';
 import { pipeline } from 'node:stream';
 import { text } from 'node:stream/consumers';
@@ -21,6 +21,7 @@ describe('http client', () => {
   let server: Server;
   let connectionResetAttempts = 0;
   let pendingStream: Gzip;
+  const hangArrivals: (() => void)[] = [];
 
   beforeAll(() => {
     server = createServer(async (req, res) => {
@@ -36,6 +37,9 @@ describe('http client', () => {
             res.setHeader('Content-Type', 'text/plain');
             res.end('200 OK');
           }, 200);
+          break;
+        case '/hang':
+          hangArrivals.shift()?.();
           break;
         case '/reset-first-request':
           if (connectionResetAttempts === 0) {
@@ -72,6 +76,10 @@ describe('http client', () => {
 
   afterAll(() => {
     server.close();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   test('Instantiate client without init parameters', async () => {
@@ -147,6 +155,31 @@ describe('http client', () => {
     const error = await getError<RequestException>(async () => await request(client, controller.signal));
     expect(error).toBeInstanceOf(RequestException);
     expect(error.innerError).toBeInstanceOf(CancelError);
+  });
+
+  test.each([
+    ['get', (client: HttpClient) => client.get('hang')],
+    ['stream', (client: HttpClient) => client.stream('get', 'hang').next()],
+  ])('Timing out %s request after 59s unless configured', async (_, request) => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    const arrivals = [0, 1].map(
+      () =>
+        new Promise<void>((resolve) => {
+          hangArrivals.push(resolve);
+        }),
+    );
+    const [byDefault, configured] = [undefined, { request: 120_000 }].map((timeout) => {
+      const client = new HttpClient({ prefixUrl: ServerUrl, options: { retry: { limit: 0 }, timeout } });
+      return getError<RequestException>(async () => await request(client));
+    });
+    const innerErrorOf = async (error: Promise<RequestException>) =>
+      (await Promise.race([error, undefined]))?.innerError;
+    await Promise.all(arrivals);
+    await jest.advanceTimersByTimeAsync(59_000);
+    expect(await innerErrorOf(byDefault)).toBeInstanceOf(TimeoutError);
+    expect(await innerErrorOf(configured)).toBeUndefined();
+    await jest.advanceTimersByTimeAsync(61_000);
+    expect(await innerErrorOf(configured)).toBeInstanceOf(TimeoutError);
   });
 
   test.each([
