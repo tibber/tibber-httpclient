@@ -130,6 +130,7 @@ export class HttpClient implements IHttpClient {
     const gotOptions: OptionsInit = {
       ...(agent !== undefined ? { agent } : {}),
       ...initParams?.options,
+      timeout: { request: 59_000, ...initParams?.options?.timeout },
       // TODO(next major): stop copying credentials into context; only the Authorization header needs them
       context: { ...initParams?.options?.context, ...initParams?.config },
     };
