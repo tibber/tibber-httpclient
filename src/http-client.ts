@@ -184,10 +184,13 @@ export class HttpClient implements IHttpClient {
     const { abortSignal, ...gotOptions } = options ?? {};
     const responsePromise = this.#got(path, { ...gotOptions });
 
-    if (abortSignal) {
-      abortSignal.addEventListener('abort', () => {
-        responsePromise.cancel();
-      });
+    if (abortSignal?.aborted) {
+      responsePromise.cancel();
+    } else if (abortSignal) {
+      const cancel = () => responsePromise.cancel();
+      const removeListener = () => abortSignal.removeEventListener('abort', cancel);
+      abortSignal.addEventListener('abort', cancel);
+      responsePromise.then(removeListener, removeListener);
     }
 
     return responsePromise;
@@ -358,6 +361,7 @@ export class HttpClient implements IHttpClient {
     const { abortSignal, ...gotOptions } = this.#processOptions(method.toUpperCase() as Method, data, options);
     const request = this.#got.stream(sanitizedPath, gotOptions);
     const abort = () => request.destroy(new CancelError(request));
+    if (abortSignal?.aborted) abort();
     abortSignal?.addEventListener('abort', abort);
     try {
       yield* request;
