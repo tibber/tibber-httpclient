@@ -189,7 +189,7 @@ export class HttpClient implements IHttpClient {
     } else if (abortSignal) {
       const cancel = () => responsePromise.cancel();
       const removeListener = () => abortSignal.removeEventListener('abort', cancel);
-      abortSignal.addEventListener('abort', cancel, { once: true });
+      abortSignal.addEventListener('abort', cancel);
       // a long-lived signal shared across requests would otherwise keep one listener per request
       responsePromise.then(removeListener, removeListener);
     }
