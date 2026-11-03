@@ -1,3 +1,4 @@
+import { getEventListeners } from 'node:events';
 import { inspect } from 'node:util';
 import { CancelError, HTTPError, ParseError, TimeoutError } from 'got';
 import { createServer, Server } from 'http';
@@ -155,6 +156,27 @@ describe('http client', () => {
     const error = await getError<RequestException>(async () => await request(client, controller.signal));
     expect(error).toBeInstanceOf(RequestException);
     expect(error.innerError).toBeInstanceOf(CancelError);
+  });
+
+  test.each<[string, (client: HttpClient, abortSignal: AbortSignal) => Promise<unknown>]>([
+    ['get', (client, abortSignal) => client.get('wait', { abortSignal })],
+    ['stream', (client, abortSignal) => client.stream('get', 'wait', undefined, { abortSignal }).next()],
+  ])('Canceling %s request with an already aborted AbortSignal', async (_, request) => {
+    const client = new HttpClient({ prefixUrl: ServerUrl });
+
+    const error = await getError<RequestException>(async () => await request(client, AbortSignal.abort()));
+    expect(error).toBeInstanceOf(RequestException);
+    expect(error.innerError).toBeInstanceOf(CancelError);
+  });
+
+  test('GET does not leave abort listeners on a shared AbortSignal', async () => {
+    const controller = new AbortController();
+    const client = new HttpClient({ prefixUrl: ServerUrl });
+
+    await client.get('logger-json', { abortSignal: controller.signal });
+    await getError(async () => await client.get('400', { abortSignal: controller.signal }));
+
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
   });
 
   test.each([
