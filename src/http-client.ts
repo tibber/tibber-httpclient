@@ -24,7 +24,7 @@ const hideSensitiveErrorProps = (error: RequestError) => {
 export class RequestException extends Error {
   readonly statusCode;
 
-  readonly stack;
+  readonly stack?: string;
 
   readonly innerError;
 
