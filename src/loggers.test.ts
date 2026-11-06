@@ -1,5 +1,5 @@
 import each from 'jest-each';
-import { Response, HTTPError, RequestError } from 'got/dist/source';
+import { Response, HTTPError, RequestError } from 'got';
 import { redact, redactSensitiveHeaders, redactSensitiveProps, PinoLogger } from './loggers';
 import { redactUrl } from './log-redaction';
 import { RequestOptions, Logger } from './interfaces';
