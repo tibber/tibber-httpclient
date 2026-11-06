@@ -45,7 +45,10 @@
     // airbnb terrible defaults
     "no-restricted-syntax": ["error", "ForInStatement", "LabeledStatement", "WithStatement"],
     "no-continue": "off",
-    "import/prefer-default-export": "off"
+    "import/prefer-default-export": "off",
+
+    // got exports only its root, so a consumer on node16/nodenext resolves a subpath's types to `any`
+    "no-restricted-imports": ["error", { "patterns": ["got/*"] }]
   }
 }
 

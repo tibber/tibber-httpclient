@@ -1,4 +1,4 @@
-import { RequestError, Response } from 'got/dist/source';
+import { RequestError, Response } from 'got';
 import copy from 'fast-copy';
 import { genericLogRedactionKeyPatterns, redactUrl } from './log-redaction';
 import { HttpLogger, Logger, RequestOptions } from './interfaces';
