@@ -1,5 +1,4 @@
-import http from 'node:http';
-import https from 'node:https';
+import { HttpAgent, HttpOptions, HttpsAgent } from 'agentkeepalive';
 import got, { Response, Got, CancelableRequest, HTTPError, CancelError, Method, Headers, OptionsInit, RequestError } from 'got';
 import NodeCache from 'node-cache';
 import { HttpClientConfig, HttpLogger, HttpMethodCall, IHttpClient, Logger, RequestOptions } from './interfaces';
@@ -7,6 +6,17 @@ import { GenericLogger, NoOpLogger, PinoLogger } from './loggers';
 import { redactUrl } from './log-redaction';
 
 export type HeaderFunction = () => Headers;
+
+const DEFAULT_POOLED_CONNECTION_LIFETIME = 60_000;
+const agentsWith = (pooledConnectionLifetime: number, keepAlive?: boolean) => {
+  const options: HttpOptions = {
+    socketActiveTTL: pooledConnectionLifetime,
+    timeout: 0,
+    ...(keepAlive ? { keepAliveMsecs: 15_000, freeSocketTimeout: pooledConnectionLifetime } : {}),
+  };
+  return { http: new HttpAgent(options), https: new HttpsAgent(options) };
+};
+const sharedAgents = agentsWith(DEFAULT_POOLED_CONNECTION_LIFETIME);
 
 /**
  * got errors carry the full request options (auth headers, request body, context) as enumerable
@@ -102,12 +112,10 @@ export type HttpClientInitParams = {
   config?: HttpClientConfig;
   options?: OptionsInit;
   headerFunc?: HeaderFunction;
-  /**
-   * When true, configures the HTTP/HTTPS agents with keep-alive and a 15-second
-   * keepAliveMsecs to prevent stale socket reuse (ECONNRESET) on very low-throughput
-   * connections where sockets can sit idle long enough for the remote to close them.
-   */
+  /** Keeps idle sockets open, with TCP keep-alive probes, for the pooled connection lifetime instead of 4 seconds. */
   keepAlive?: boolean;
+  /** Pooled connection lifetime in milliseconds, 0 for none. Defaults to 60 seconds. */
+  pooledConnectionLifetime?: number;
 };
 
 export class HttpClient implements IHttpClient {
@@ -120,15 +128,14 @@ export class HttpClient implements IHttpClient {
   readonly #headerFunc: HeaderFunction | undefined;
 
   constructor(initParams?: HttpClientInitParams) {
-    const agent = initParams?.keepAlive
-      ? {
-          http: new http.Agent({ keepAlive: true, keepAliveMsecs: 15_000 }),
-          https: new https.Agent({ keepAlive: true, keepAliveMsecs: 15_000 }),
-        }
-      : undefined;
+    const { keepAlive, pooledConnectionLifetime = DEFAULT_POOLED_CONNECTION_LIFETIME } = initParams ?? {};
+    const agent =
+      keepAlive || pooledConnectionLifetime !== DEFAULT_POOLED_CONNECTION_LIFETIME
+        ? agentsWith(pooledConnectionLifetime, keepAlive)
+        : sharedAgents;
 
     const gotOptions: OptionsInit = {
-      ...(agent !== undefined ? { agent } : {}),
+      agent,
       ...initParams?.options,
       timeout: { request: 59_000, ...initParams?.options?.timeout },
       // TODO(next major): stop copying credentials into context; only the Authorization header needs them

@@ -52,6 +52,9 @@ describe('http client', () => {
             res.end(JSON.stringify({ ok: true }));
           }
           break;
+        case '/remote-port':
+          res.end(String(req.socket.remotePort));
+          break;
         case '/logger-json':
           res.statusCode = 200;
           res.setHeader('Content-Type', 'application/json');
@@ -180,6 +183,19 @@ describe('http client', () => {
     expect(await innerErrorOf(configured)).toBeUndefined();
     await jest.advanceTimersByTimeAsync(61_000);
     expect(await innerErrorOf(configured)).toBeInstanceOf(TimeoutError);
+  });
+
+  test.each([
+    ['60s by default', undefined, 60_000],
+    ['5s when configured', 5_000, 5_000],
+  ])('Pooled connection lifetime of %s', async (_, pooledConnectionLifetime, lifetime) => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    const client = new HttpClient({ prefixUrl: ServerUrl, pooledConnectionLifetime });
+    const remotePort = () => client.get<string>('remote-port');
+    const port = await remotePort();
+    await jest.advanceTimersByTimeAsync(lifetime);
+    expect(await remotePort()).toBe(port);
+    expect(await remotePort()).not.toBe(port);
   });
 
   test.each([
