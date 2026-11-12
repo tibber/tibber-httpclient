@@ -41,6 +41,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "agentkeepalive": "^4.6.0",
     "fast-copy": "^3.0.1",
     "got": "^12.6.0",
     "node-cache": "^5.1.2"

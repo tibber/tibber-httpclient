@@ -11,6 +11,8 @@ The v5 version no longer bundles its runtime dependencies (`got`, `fast-copy`) i
 
 Since 5.3, requests time out after 59 seconds by default, the same as the .NET `Tibber.Services.Client`. The timeout covers reading the whole body, including `stream`. Override it per client with `options: { timeout: { request: ms } }`, or per request with `{ timeout: { request: ms } }`.
 
+Since 5.4, the pooled connection lifetime is configurable with `pooledConnectionLifetime` (milliseconds), defaulting to 60 seconds. A Kubernetes Service picks a pod per connection, so the lifetime lets a client reach pods added after it connected. A custom `options.agent` opts out.
+
 See the unit tests for how to use this library.
 
 All options that can be supplied to instantiation or the HTTP requests are fully compatible with the `got` API.
