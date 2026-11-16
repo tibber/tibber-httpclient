@@ -1,6 +1,14 @@
 import { HttpAgent, HttpOptions, HttpsAgent } from 'agentkeepalive';
 import got, { Response, Got, HTTPError, AbortError, Method, Headers, OptionsInit, RequestError } from 'got';
-import { HttpClientConfig, HttpLogger, HttpMethodCall, IHttpClient, Logger, RequestOptions, RouteCache } from './interfaces';
+import {
+  HttpClientConfig,
+  HttpLogger,
+  HttpMethodCall,
+  IHttpClient,
+  Logger,
+  RequestOptions,
+  RouteCache,
+} from './interfaces';
 import { GenericLogger, NoOpLogger, PinoLogger } from './loggers';
 import { redactUrl } from './log-redaction';
 

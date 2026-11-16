@@ -124,8 +124,19 @@ export class PinoLogger implements HttpLogger {
   }
 }
 
-const loggedOptions = ['method', 'headers', 'json', 'form', 'context', 'timeout', 'retry', 'decompress', 'followRedirect'] as const;
-const copyObject = (value: unknown) => (value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : value);
+const loggedOptions = [
+  'method',
+  'headers',
+  'json',
+  'form',
+  'context',
+  'timeout',
+  'retry',
+  'decompress',
+  'followRedirect',
+] as const;
+const copyObject = (value: unknown) =>
+  value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : value;
 
 export const redact = (options: RequestOptions) => {
   const clone = Object.fromEntries(
