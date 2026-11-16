@@ -3,10 +3,8 @@ import { genericLogRedactionKeyPatterns, redactUrl } from './log-redaction';
 import { HttpLogger, Logger, RequestOptions } from './interfaces';
 
 export class NoOpLogger implements HttpLogger {
-  // eslint-disable-next-line class-methods-use-this
   logSuccess(_response: Response, _options: RequestOptions): void {}
 
-  // eslint-disable-next-line class-methods-use-this
   logFailure(_error: RequestError): void {}
 }
 
@@ -17,7 +15,7 @@ const tryStringifyJSON = (data: object | undefined | null, onfailureResult?: str
   try {
     return JSON.stringify(data);
   }
-  catch (e) {
+  catch {
     return onfailureResult ?? 'could not serialize logged data';
   }
 }
@@ -153,7 +151,6 @@ export const redactSensitiveHeaders = (options: RequestOptions) => {
   for (const prop of Object.keys(options.headers ?? {})) {
     for (const propMatch of genericLogRedactionKeyPatterns.headers) {
       if (!propMatch.test(prop)) continue;
-      // eslint-disable-next-line no-param-reassign
       options.headers[prop] = '<redacted>';
     }
   }

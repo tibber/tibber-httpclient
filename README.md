@@ -7,7 +7,7 @@ The v2 version was updated to use the more actively developed `got` under the ho
 
 With `got` there is now also support for cancelling requests.
 
-The v5 version no longer bundles its runtime dependencies (`got`, `fast-copy`) into `dist`. They are resolved from `node_modules`, so security scanners see them and consumers can patch them via `resolutions`/`overrides`. Since `got` is ESM-only, this requires Node.js `>=22.12.0` (`require(esm)` support). Consumers that load this package in Jest must allow `got` and its dependencies to be transformed (see `jest.config.js`).
+The v5 version no longer bundles its runtime dependencies (`got`, `fast-copy`) into `dist`. They are resolved from `node_modules`, so security scanners see them and consumers can patch them via `resolutions`/`overrides`. Since `got` is ESM-only, this requires Node.js `>=22.12.0` (`require(esm)` support). Consumers that load this package in Jest must allow `got` and its dependencies to be transformed (see `jest.config.mjs`).
 
 Since 5.3, requests time out after 59 seconds by default, the same as the .NET `Tibber.Services.Client`. The timeout covers reading the whole body, including `stream`. Override it per client with `options: { timeout: { request: ms } }`, or per request with `{ timeout: { request: ms } }`.
 

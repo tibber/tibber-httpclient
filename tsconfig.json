@@ -16,9 +16,9 @@
     "./test",
     "./.prettierrc.json",
     "./package.json",
-    "./.eslintrc.json",
+    "./eslint.config.mjs",
     "./renovate.json",
-    "./jest.config.js",
+    "./jest.config.mjs",
     "./jest-setup.js"
   ]
 }

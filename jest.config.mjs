@@ -1,5 +1,5 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
-module.exports = {
+export default {
   preset: 'ts-jest/presets/js-with-ts',
   testEnvironment: 'node',
   // got's ESM package is not compatible with jest's ESM support

@@ -259,7 +259,7 @@ export class HttpClient implements IHttpClient {
               innerError: error,
             });
           }
-        } catch (_parsingError) {
+        } catch {
           /* empty */
         }
       }
@@ -425,7 +425,6 @@ export class TestHttpClient implements IHttpClient {
     return response as T;
   }
 
-  // eslint-disable-next-line class-methods-use-this
   raw<T = unknown>(_path: string, _options: Omit<RequestOptions, 'json'>): Promise<Response<T>> {
     return Promise.reject(new Error('method not implemented'));
   }
