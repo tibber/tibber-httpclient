@@ -1,3 +1,4 @@
+import { Options } from 'got';
 import { RequestError, Response } from 'got/dist/source';
 import copy from 'fast-copy';
 import { genericLogRedactionKeyPatterns, redactUrl } from './log-redaction';
@@ -126,7 +127,8 @@ export class PinoLogger implements HttpLogger {
 }
 
 export const redact = (options: RequestOptions) => {
-  const clone = copy(options);
+  const loggable = options instanceof Options ? { ...options.toJSON(), agent: undefined } : options;
+  const clone = copy(loggable) as RequestOptions;
   redactSensitiveHeaders(clone);
   redactSensitiveProps(clone);
   return clone;
