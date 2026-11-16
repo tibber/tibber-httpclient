@@ -1,4 +1,3 @@
-import each from 'jest-each';
 import { Response, HTTPError, RequestError } from 'got';
 import { redact, redactSensitiveHeaders, redactSensitiveProps, PinoLogger } from './loggers';
 import { redactUrl } from './log-redaction';
@@ -26,7 +25,7 @@ describe('log redaction', () => {
     });
   });
 
-  each`
+  describe.each`
         input                       | expected
         ${{ ignoreMe: 'ignoreMe' }} | ${{ ignoreMe: 'ignoreMe' }}
         ${{ email: 'e' }}           | ${{ email: '<redacted>' }}
@@ -47,7 +46,7 @@ describe('log redaction', () => {
         ${{ ClientSecret: 's' }}    | ${{ ClientSecret: '<redacted>' }}
         ${{ token: 't' }}           | ${{ token: '<redacted>' }}
         ${{ Token: 't' }}           | ${{ Token: '<redacted>' }}
-    `.describe('redact $input', ({ input, expected }) => {
+    `('redact $input', ({ input, expected }) => {
     test(`from 'json'`, () => {
       const actual = { json: input } as RequestOptions;
       redactSensitiveProps(actual);
@@ -61,7 +60,7 @@ describe('log redaction', () => {
     });
   });
 
-  each`
+  test.each`
     input | expected
       ${{ authorization: 'a' }} | ${{ authorization: '<redacted>' }},
       ${{ Authorization: 'a' }} | ${{ Authorization: '<redacted>' }},
@@ -69,7 +68,7 @@ describe('log redaction', () => {
       ${{ 'x-api-key': 'k' }} | ${{ 'x-api-key': '<redacted>' }},
       ${{ 'x-auth-token': 't' }} | ${{ 'x-auth-token': '<redacted>' }},
       ${{ 'content-type': 'application/json' }} | ${{ 'content-type': 'application/json' }},
-  `.test('redact $input from headers', ({ input, expected }) => {
+  `('redact $input from headers', ({ input, expected }) => {
     const actual = { headers: input } as RequestOptions;
     redactSensitiveHeaders(actual);
     expect(actual.headers).toStrictEqual(expected);
@@ -77,7 +76,7 @@ describe('log redaction', () => {
 });
 
 describe('redactUrl', () => {
-  each`
+  test.each`
     input                                                       | expected
     ${'https://user:pass@host/x'}                               | ${'https://<redacted>@host/x'}
     ${'https://host/x?access_token=s&page=2'}                   | ${'https://host/x?access_token=<redacted>&page=2'}
@@ -86,7 +85,7 @@ describe('redactUrl', () => {
     ${'https://host/x?session_id=s&password=p'}                 | ${'https://host/x?session_id=<redacted>&password=<redacted>'}
     ${'https://host/x?passengers=3&userId=42&author=a'}         | ${'https://host/x?passengers=3&userId=42&author=a'}
     ${'undefined/x?token=s#frag'}                               | ${'undefined/x?token=<redacted>#frag'}
-  `.test('redacts $input', ({ input, expected }) => {
+  `('redacts $input', ({ input, expected }) => {
     expect(redactUrl(input)).toBe(expected);
   });
 });
