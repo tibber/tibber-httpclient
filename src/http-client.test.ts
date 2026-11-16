@@ -1,6 +1,6 @@
 import { getEventListeners } from 'node:events';
 import { inspect } from 'node:util';
-import { CancelError, HTTPError, ParseError, TimeoutError } from 'got';
+import { AbortError, HTTPError, ParseError, TimeoutError } from 'got';
 import { createServer, Server } from 'http';
 import { pipeline } from 'node:stream';
 import { text } from 'node:stream/consumers';
@@ -158,7 +158,7 @@ describe('http client', () => {
 
     const error = await getError<RequestException>(async () => await request(client, controller.signal));
     expect(error).toBeInstanceOf(RequestException);
-    expect(error.innerError).toBeInstanceOf(CancelError);
+    expect(error.innerError).toBeInstanceOf(AbortError);
   });
 
   test.each<[string, (client: HttpClient, abortSignal: AbortSignal) => Promise<unknown>]>([
@@ -169,7 +169,7 @@ describe('http client', () => {
 
     const error = await getError<RequestException>(async () => await request(client, AbortSignal.abort()));
     expect(error).toBeInstanceOf(RequestException);
-    expect(error.innerError).toBeInstanceOf(CancelError);
+    expect(error.innerError).toBeInstanceOf(AbortError);
   });
 
   test('GET does not leave abort listeners on a shared AbortSignal', async () => {
@@ -476,7 +476,7 @@ describe('http client', () => {
     });
 
     test.each([
-      ['cancelled', { path: 'wait', cancel: true, innerError: CancelError }],
+      ['cancelled', { path: 'wait', cancel: true, innerError: AbortError }],
       ['unparseable', { path: 'not-json', cancel: false, innerError: ParseError }],
     ])('%s request errors do not serialize credentials', async (_, { path, cancel, innerError }) => {
       const client = new HttpClient({ prefixUrl: ServerUrl, config: { bearerToken: 'SECRET_BEARER' } });

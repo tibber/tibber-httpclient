@@ -1,5 +1,5 @@
 import { HttpAgent, HttpOptions, HttpsAgent } from 'agentkeepalive';
-import got, { Response, Got, CancelableRequest, HTTPError, CancelError, Method, Headers, OptionsInit, RequestError } from 'got';
+import got, { Response, Got, HTTPError, AbortError, Method, Headers, OptionsInit, RequestError } from 'got';
 import NodeCache from 'node-cache';
 import { HttpClientConfig, HttpLogger, HttpMethodCall, IHttpClient, Logger, RequestOptions } from './interfaces';
 import { GenericLogger, NoOpLogger, PinoLogger } from './loggers';
@@ -28,6 +28,10 @@ const hideSensitiveErrorProps = (error: RequestError) => {
     if (Object.prototype.hasOwnProperty.call(error, prop)) {
       Object.defineProperty(error, prop, { enumerable: false });
     }
+  }
+  if (error instanceof HTTPError) {
+    const message = `Response code ${error.response.statusCode} (${error.response.statusMessage})`;
+    Object.assign(error, { message, stack: error.stack?.replace(error.message, message) });
   }
 };
 
@@ -136,6 +140,7 @@ export class HttpClient implements IHttpClient {
 
     const gotOptions: OptionsInit = {
       agent,
+      strictContentLength: false,
       ...initParams?.options,
       timeout: { request: 59_000, ...initParams?.options?.timeout },
       // TODO(next major): stop copying credentials into context; only the Authorization header needs them
@@ -187,20 +192,9 @@ export class HttpClient implements IHttpClient {
     this.#got = got.extend(gotOptions);
   }
 
-  #request(path: string, options: RequestOptions): CancelableRequest<Response<string>> {
+  #request(path: string, options: RequestOptions) {
     const { abortSignal, ...gotOptions } = options ?? {};
-    const responsePromise = this.#got(path, { ...gotOptions });
-
-    if (abortSignal?.aborted) {
-      responsePromise.cancel();
-    } else if (abortSignal) {
-      const cancel = () => responsePromise.cancel();
-      const removeListener = () => abortSignal.removeEventListener('abort', cancel);
-      abortSignal.addEventListener('abort', cancel);
-      responsePromise.then(removeListener, removeListener);
-    }
-
-    return responsePromise;
+    return this.#got(path, { ...gotOptions, signal: abortSignal });
   }
 
   async #requestJson<T>({ path, options }: { path: string; options: RequestOptions }): Promise<T> {
@@ -219,12 +213,12 @@ export class HttpClient implements IHttpClient {
     const url = redactUrl(`${this.#prefixUrl}/${path}`);
     let code;
     if (error instanceof RequestError) {
-      // base class of HTTPError/CancelError — also catches connection-level failures
-      this.#logger.logFailure(error);
-      // not a got beforeError hook: those don't run for CancelError/ParseError
+      // base class of HTTPError/AbortError — also catches connection-level failures
+      // not a got beforeError hook: those don't run for AbortError
       hideSensitiveErrorProps(error);
+      this.#logger.logFailure(error);
     }
-    if (error instanceof HTTPError || error instanceof CancelError) {
+    if (error instanceof HTTPError || error instanceof AbortError) {
       code = error.response?.statusCode ?? error.code;
       const contentType = error.response?.headers['content-type'] ?? '';
       if (
@@ -254,7 +248,7 @@ export class HttpClient implements IHttpClient {
               title,
               type,
               extensions: extensions ?? {},
-              statusCode: code,
+              statusCode: error.response.statusCode,
               innerError: error,
             });
           }
@@ -366,17 +360,12 @@ export class HttpClient implements IHttpClient {
   ): AsyncGenerator<Uint8Array> {
     const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
     const { abortSignal, ...gotOptions } = this.#processOptions(method.toUpperCase() as Method, data, options);
-    const request = this.#got.stream(sanitizedPath, gotOptions);
-    const abort = () => request.destroy(new CancelError(request));
-    if (abortSignal?.aborted) abort();
-    abortSignal?.addEventListener('abort', abort);
+    const request = this.#got.stream(sanitizedPath, { ...gotOptions, signal: abortSignal });
     try {
       yield* request;
       this.#logger.logSuccess(request.response as Response, gotOptions);
     } catch (error) {
       throw this.#logAndCreateError({ error, path: sanitizedPath });
-    } finally {
-      abortSignal?.removeEventListener('abort', abort);
     }
   }
 }

@@ -2,9 +2,9 @@
 module.exports = {
   preset: 'ts-jest/presets/js-with-babel',
   testEnvironment: 'node',
-  // got's ESM package in v12.x is not compatible with jest's ESM support
+  // got's ESM package is not compatible with jest's ESM support
   transformIgnorePatterns: [
-    '/node_modules/(?!(got|p-cancelable|@szmarczak|lowercase-keys|@sindresorhus/is|form-data-encoder|cacheable-request|normalize-url|responselike|mimic-response|cacheable-lookup)/)',
+    '/node_modules/(?!(got|@sindresorhus/is|@keyv/serialize|@sec-ant/readable-stream|byte-counter|cacheable-request|chunk-data|decompress-response|get-stream|is-stream|keyv|lowercase-keys|mimic-response|normalize-url|responselike|uint8array-extras)/)',
   ],
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/dist/'],
 };

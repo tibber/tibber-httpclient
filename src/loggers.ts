@@ -1,5 +1,4 @@
-import { Options } from 'got';
-import { RequestError, Response } from 'got/dist/source';
+import { Options, RequestError, Response } from 'got';
 import copy from 'fast-copy';
 import { genericLogRedactionKeyPatterns, redactUrl } from './log-redaction';
 import { HttpLogger, Logger, RequestOptions } from './interfaces';
@@ -36,7 +35,7 @@ export class GenericLogger implements HttpLogger {
 
   logSuccess(response: Response, options: RequestOptions): void {
     const { url, statusCode, timings } = response;
-    const message = `${options.method} ${redactUrl(url)} ${statusCode} ${new Date().getTime() - timings.start} ms`;
+    const message = `${options.method} ${redactUrl(url)} ${statusCode} ${new Date().getTime() - Number(timings?.start)} ms`;
     if (options.method === 'GET') {
       this.#logger.debug(message);
     } else {

@@ -8,8 +8,7 @@
     "strict": true,
     "noUnusedParameters": true,
     "target": "ES2019",
-    "module": "commonjs",
-    "moduleResolution": "node"
+    "module": "node20"
   },
   "include": [
     "./src",

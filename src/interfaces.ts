@@ -1,4 +1,4 @@
-import { OptionsInit, RequestError, Response } from 'got/dist/source';
+import { OptionsInit, RequestError, Response } from 'got';
 
 export interface Logger {
   info(...args: unknown[]): void;
