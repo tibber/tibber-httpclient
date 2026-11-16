@@ -13,6 +13,8 @@ Since 5.3, requests time out after 59 seconds by default, the same as the .NET `
 
 Since 5.4, the pooled connection lifetime is configurable with `pooledConnectionLifetime` (milliseconds), defaulting to 60 seconds.
 
+Since 5.5, this library uses `got` 16. `raw()` responses carry `rawBody` as a `Uint8Array` instead of a `Buffer`, and a request cancelled through `abortSignal` fails with got's `AbortError` (`ERR_ABORTED`).
+
 See the unit tests for how to use this library.
 
 All options that can be supplied to instantiation or the HTTP requests are fully compatible with the `got` API.
