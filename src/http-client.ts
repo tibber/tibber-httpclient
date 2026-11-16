@@ -1,7 +1,6 @@
 import { HttpAgent, HttpOptions, HttpsAgent } from 'agentkeepalive';
 import got, { Response, Got, HTTPError, AbortError, Method, Headers, OptionsInit, RequestError } from 'got';
-import NodeCache from 'node-cache';
-import { HttpClientConfig, HttpLogger, HttpMethodCall, IHttpClient, Logger, RequestOptions } from './interfaces';
+import { HttpClientConfig, HttpLogger, HttpMethodCall, IHttpClient, Logger, RequestOptions, RouteCache } from './interfaces';
 import { GenericLogger, NoOpLogger, PinoLogger } from './loggers';
 import { redactUrl } from './log-redaction';
 
@@ -436,9 +435,9 @@ export class CachedClient implements ICachedHttpClient {
 
   readonly #logger: Logger;
 
-  readonly #cache: NodeCache;
+  readonly #cache: RouteCache;
 
-  constructor(httpClient: HttpClient, logger: Logger, cache: NodeCache) {
+  constructor(httpClient: HttpClient, logger: Logger, cache: RouteCache) {
     this.#httpClient = httpClient;
     this.#logger = logger;
     this.#cache = cache;

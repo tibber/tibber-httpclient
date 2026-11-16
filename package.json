@@ -42,7 +42,6 @@
   },
   "dependencies": {
     "agentkeepalive": "^4.6.0",
-    "got": "^16.2.0",
-    "node-cache": "^5.1.2"
+    "got": "^16.2.0"
   }
 }

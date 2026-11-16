@@ -39,6 +39,12 @@ export interface IHttpClient {
   ): AsyncIterable<Uint8Array>;
 }
 
+/** The cache `CachedClient` stores GET responses in, e.g. a `NodeCache` from `node-cache`. */
+export interface RouteCache {
+  get<T>(route: string): T | undefined;
+  set(route: string, value: unknown): unknown;
+}
+
 export interface HttpClientConfig {
   basicAuthUserName?: string;
   basicAuthPassword?: string;
