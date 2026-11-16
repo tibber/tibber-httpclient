@@ -42,7 +42,6 @@
   },
   "dependencies": {
     "agentkeepalive": "^4.6.0",
-    "fast-copy": "^3.0.1",
     "got": "^16.2.0",
     "node-cache": "^5.1.2"
   }

@@ -1,5 +1,4 @@
-import { Options, RequestError, Response } from 'got';
-import copy from 'fast-copy';
+import { RequestError, Response } from 'got';
 import { genericLogRedactionKeyPatterns, redactUrl } from './log-redaction';
 import { HttpLogger, Logger, RequestOptions } from './interfaces';
 
@@ -125,9 +124,13 @@ export class PinoLogger implements HttpLogger {
   }
 }
 
+const loggedOptions = ['method', 'headers', 'json', 'form', 'context', 'timeout', 'retry', 'decompress', 'followRedirect'] as const;
+const copyObject = (value: unknown) => (value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : value);
+
 export const redact = (options: RequestOptions) => {
-  const loggable = options instanceof Options ? { ...options.toJSON(), agent: undefined } : options;
-  const clone = copy(loggable) as RequestOptions;
+  const clone = Object.fromEntries(
+    loggedOptions.filter((key) => options[key] !== undefined).map((key) => [key, copyObject(options[key])]),
+  ) as RequestOptions;
   redactSensitiveHeaders(clone);
   redactSensitiveProps(clone);
   return clone;
