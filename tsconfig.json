@@ -3,6 +3,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "./dist",
+    "rootDir": ".",
+    "types": ["node", "jest"],
     "sourceMap": true,
     "allowJs": true,
     "strict": true,
