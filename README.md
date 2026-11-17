@@ -7,13 +7,18 @@ The v2 version was updated to use the more actively developed `got` under the ho
 
 With `got` there is now also support for cancelling requests.
 
-The v5 version no longer bundles its runtime dependencies (`got`, `fast-copy`) into `dist`. They are resolved from `node_modules`, so security scanners see them and consumers can patch them via `resolutions`/`overrides`. Since `got` is ESM-only, this requires Node.js `>=22.12.0` (`require(esm)` support). Consumers that load this package in Jest must allow `got` and its dependencies to be transformed (see `jest.config.mjs`).
+The v5 version no longer bundles its runtime dependencies into `dist`. They are resolved from `node_modules`, so security scanners see them and consumers can patch them via `resolutions`/`overrides`. Since `got` is ESM-only, this requires `require(esm)` support (Node.js `^20.19.0 || >=22.12.0`). Consumers that load this package in Jest must allow `got` and its dependencies to be transformed (see `jest.config.mjs`).
 
 Since 5.3, requests time out after 59 seconds by default, the same as the .NET `Tibber.Services.Client`. The timeout covers reading the whole body, including `stream`. Override it per client with `options: { timeout: { request: ms } }`, or per request with `{ timeout: { request: ms } }`.
 
 Since 5.4, the pooled connection lifetime is configurable with `pooledConnectionLifetime` (milliseconds), defaulting to 60 seconds.
 
-Since 5.5, this library uses `got` 16. `raw()` responses carry `rawBody` as a `Uint8Array` instead of a `Buffer`, and a request cancelled through `abortSignal` fails with got's `AbortError` (`ERR_ABORTED`).
+Since 5.5, this library uses `got` 16 and requires Node.js `>=22.12.0`:
+- `raw()` responses carry `rawBody`, and `body` with `responseType: 'buffer'`, as a `Uint8Array` instead of a `Buffer`. Wrap it in `Buffer.from()` before calling `toString()`.
+- A request cancelled through `abortSignal` fails with a `RequestException` whose `innerError` is got's `AbortError` and whose `statusCode` is `ERR_ABORTED` (previously `CancelError` and `ERR_CANCELED`). An `AbortSignal.timeout()` signal gives got's `TimeoutError` and no `statusCode`.
+- A client with a `prefixUrl` rejects absolute URLs, unless created with `options: { allowAbsoluteUrls: true }`.
+- `CachedClient` takes any cache with `get` and `set` (`RouteCache`); `node-cache` is no longer a dependency of this library.
+- TypeScript consumers need `moduleResolution` `node16`, `nodenext` or `bundler`, otherwise got's types resolve to `any`.
 
 See the unit tests for how to use this library.
 

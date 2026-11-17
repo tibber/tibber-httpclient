@@ -4,7 +4,7 @@ import { redactUrl } from './log-redaction';
 import { RequestOptions, Logger } from './interfaces';
 
 describe('log redaction', () => {
-  test('should deep clone options', () => {
+  test('should copy options', () => {
     const options = {
       headers: {
         authorization: 'a',
@@ -14,7 +14,7 @@ describe('log redaction', () => {
       },
     };
     const actual = redact(options);
-    expect(actual).not.toBe(options);
+    expect(options).toStrictEqual({ headers: { authorization: 'a' }, json: { password: 'p' } });
     expect(actual).toStrictEqual({
       headers: {
         authorization: '<redacted>',

@@ -1,6 +1,6 @@
 import { RequestError, Response } from 'got';
 import { genericLogRedactionKeyPatterns, redactUrl } from './log-redaction';
-import { HttpLogger, Logger, RequestOptions } from './interfaces';
+import { HttpLogger, Logger, RequestOptions, requestOptionKeys } from './interfaces';
 
 export class NoOpLogger implements HttpLogger {
   logSuccess(_response: Response, _options: RequestOptions): void {}
@@ -32,7 +32,7 @@ export class GenericLogger implements HttpLogger {
 
   logSuccess(response: Response, options: RequestOptions): void {
     const { url, statusCode, timings } = response;
-    const message = `${options.method} ${redactUrl(url)} ${statusCode} ${new Date().getTime() - Number(timings?.start)} ms`;
+    const message = `${options.method} ${redactUrl(url)} ${statusCode} ${timings ? Date.now() - timings.start : '-'} ms`;
     if (options.method === 'GET') {
       this.#logger.debug(message);
     } else {
@@ -122,23 +122,12 @@ export class PinoLogger implements HttpLogger {
   }
 }
 
-const loggedOptions = [
-  'method',
-  'headers',
-  'json',
-  'form',
-  'context',
-  'timeout',
-  'retry',
-  'decompress',
-  'followRedirect',
-] as const;
 const copyObject = (value: unknown) =>
   value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : value;
 
 export const redact = (options: RequestOptions) => {
   const clone = Object.fromEntries(
-    loggedOptions.filter((key) => options[key] !== undefined).map((key) => [key, copyObject(options[key])]),
+    requestOptionKeys.filter((key) => options[key] !== undefined).map((key) => [key, copyObject(options[key])]),
   ) as RequestOptions;
   redactSensitiveHeaders(clone);
   redactSensitiveProps(clone);

@@ -1,5 +1,5 @@
 import { HttpAgent, HttpOptions, HttpsAgent } from 'agentkeepalive';
-import got, { Response, Got, HTTPError, AbortError, Method, Headers, OptionsInit, RequestError } from 'got';
+import got, { Response, Got, HTTPError, AbortError, ParseError, Method, Headers, OptionsInit, RequestError } from 'got';
 import {
   HttpClientConfig,
   HttpLogger,
@@ -30,17 +30,21 @@ const sharedAgents = agentsWith(DEFAULT_POOLED_CONNECTION_LIFETIME);
  * properties, so any error serializer (pino, Sentry, util.inspect, JSON.stringify) would leak them.
  * Keep them accessible, but out of serialized output.
  */
-const hideSensitiveErrorProps = (error: RequestError) => {
-  for (const prop of ['options', 'input']) {
-    if (Object.prototype.hasOwnProperty.call(error, prop)) {
-      Object.defineProperty(error, prop, { enumerable: false });
+const hideSensitiveErrorProps = (error: unknown) => {
+  for (let e = error; e instanceof Error; e = (e as { cause?: unknown }).cause) {
+    for (const prop of ['options', 'input']) {
+      if (Object.prototype.hasOwnProperty.call(e, prop)) Object.defineProperty(e, prop, { enumerable: false });
     }
   }
-  if (error instanceof HTTPError) {
-    const message = `Response code ${error.response.statusCode} (${error.response.statusMessage})`;
-    Object.assign(error, { message, stack: error.stack?.replace(error.message, message) });
+  if (error instanceof HTTPError && error.response) {
+    setMessage(error, `Response code ${error.response.statusCode} (${error.response.statusMessage})`);
+  } else if (error instanceof ParseError) {
+    setMessage(error, error.message.replace(/[^"]*(?="$)/, (url) => redactUrl(url)));
   }
 };
+
+const setMessage = (error: Error, message: string) =>
+  Object.assign(error, { message, stack: error.stack?.replace(error.message, () => message) });
 
 export class RequestException extends Error {
   readonly statusCode;
@@ -148,8 +152,10 @@ export class HttpClient implements IHttpClient {
     const gotOptions: OptionsInit = {
       agent,
       strictContentLength: false,
+      allowAbsoluteUrls: false,
       ...initParams?.options,
       timeout: { request: 59_000, ...initParams?.options?.timeout },
+      retry: { enforceRetryRules: false, ...initParams?.options?.retry },
       // TODO(next major): stop copying credentials into context; only the Authorization header needs them
       context: { ...initParams?.options?.context, ...initParams?.config },
     };
@@ -201,7 +207,7 @@ export class HttpClient implements IHttpClient {
 
   #request(path: string, options: RequestOptions) {
     const { abortSignal, ...gotOptions } = options ?? {};
-    return this.#got(path, { ...gotOptions, signal: abortSignal });
+    return this.#got(path, { signal: abortSignal, ...gotOptions });
   }
 
   async #requestJson<T>({ path, options }: { path: string; options: RequestOptions }): Promise<T> {
@@ -219,12 +225,9 @@ export class HttpClient implements IHttpClient {
   #logAndCreateError({ error, path }: { error: unknown; path: string }) {
     const url = redactUrl(`${this.#prefixUrl}/${path}`);
     let code;
-    if (error instanceof RequestError) {
-      // base class of HTTPError/AbortError — also catches connection-level failures
-      // not a got beforeError hook: those don't run for AbortError
-      hideSensitiveErrorProps(error);
-      this.#logger.logFailure(error);
-    }
+    // not a got beforeError hook: those don't run for AbortError, or for ParseError from .json()
+    hideSensitiveErrorProps(error);
+    if (error instanceof RequestError) this.#logger.logFailure(error);
     if (error instanceof HTTPError || error instanceof AbortError) {
       code = error.response?.statusCode ?? error.code;
       const contentType = error.response?.headers['content-type'] ?? '';
@@ -350,11 +353,11 @@ export class HttpClient implements IHttpClient {
    * @param {OptionsInit} options all options supported by 'got'
    * @return {Promise<Response<T = unknown>>}
    */
-  async raw<T = unknown>(path: string, options: OptionsInit): Promise<Response<T>> {
+  async raw<T = unknown>(path: string, options: OptionsInit & Pick<RequestOptions, 'abortSignal'>): Promise<Response<T>> {
     try {
-      return (await this.#got(path, options)) as Response<T>;
+      return (await this.#request(path, options as RequestOptions)) as Response<T>;
     } catch (error) {
-      if (error instanceof RequestError) hideSensitiveErrorProps(error);
+      hideSensitiveErrorProps(error);
       throw error;
     }
   }
@@ -367,7 +370,7 @@ export class HttpClient implements IHttpClient {
   ): AsyncGenerator<Uint8Array> {
     const sanitizedPath = path.startsWith('/') ? path.slice(1) : path;
     const { abortSignal, ...gotOptions } = this.#processOptions(method.toUpperCase() as Method, data, options);
-    const request = this.#got.stream(sanitizedPath, { ...gotOptions, signal: abortSignal });
+    const request = this.#got.stream(sanitizedPath, { signal: abortSignal, ...gotOptions });
     try {
       yield* request;
       this.#logger.logSuccess(request.response as Response, gotOptions);
@@ -452,7 +455,7 @@ export class CachedClient implements ICachedHttpClient {
 
   async #get<T>(route: string, noCache: boolean): Promise<T> {
     if (!noCache) {
-      const cached = this.#cache.get<T>(route);
+      const cached = this.#cache.get(route) as T | undefined;
       if (cached) {
         this.#logger?.debug(`returning cached result for route "${route}"`);
         return cached;

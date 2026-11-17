@@ -1,6 +1,6 @@
 import { getEventListeners } from 'node:events';
 import { inspect } from 'node:util';
-import { AbortError, HTTPError, ParseError, TimeoutError } from 'got';
+import { AbortError, HTTPError, ParseError, RequestError, TimeoutError } from 'got';
 import { createServer, Server } from 'http';
 import { pipeline } from 'node:stream';
 import { text } from 'node:stream/consumers';
@@ -29,6 +29,7 @@ describe('http client', () => {
       switch (req.url?.split('?')[0]) {
         case '/400':
           res.statusCode = 400;
+          res.statusMessage = 'Bad Request $&';
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ reason: 'bad' }));
           break;
@@ -172,11 +173,12 @@ describe('http client', () => {
     expect(error.innerError).toBeInstanceOf(AbortError);
   });
 
-  test('GET does not leave abort listeners on a shared AbortSignal', async () => {
+  test('get and raw do not leave abort listeners on a shared AbortSignal', async () => {
     const controller = new AbortController();
     const client = new HttpClient({ prefixUrl: ServerUrl });
 
     await client.get('logger-json', { abortSignal: controller.signal });
+    await client.raw('logger-json', { abortSignal: controller.signal });
     await getError(async () => await client.get('400', { abortSignal: controller.signal }));
 
     expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
@@ -407,12 +409,14 @@ describe('http client', () => {
     expect(connectionResetAttempts).toBe(2);
   });
 
-  test('POST does not retry on ECONNRESET', async () => {
+  test.each([
+    ['does not retry', undefined, 1],
+    ['retries when calculateDelay says so', { calculateDelay: () => 1 }, 2],
+  ])('POST %s on ECONNRESET', async (_, retry, attempts) => {
     connectionResetAttempts = 0;
     const client = new HttpClient({ prefixUrl: ServerUrl });
-    const error = await getError<RequestException>(async () => await client.post('reset-first-request', {}));
-    expect(error).toBeInstanceOf(RequestException);
-    expect(connectionResetAttempts).toBe(1);
+    await getError(async () => await client.post('reset-first-request', {}, { retry }));
+    expect(connectionResetAttempts).toBe(attempts);
   });
 
   describe('stream', () => {
@@ -469,7 +473,7 @@ describe('http client', () => {
       );
 
       expect(error).toBeInstanceOf(RequestException);
-      expect(error.message).toContain('token=<redacted>');
+      expect(error.message).toBe(`${ServerUrl}/400?token=<redacted> Response code 400 (Bad Request $&)`);
       serializations(error).forEach(expectNoSecrets);
       // still reachable for programmatic access
       expect((error.innerError as HTTPError).options.headers.authorization).toBeDefined();
@@ -477,7 +481,8 @@ describe('http client', () => {
 
     test.each([
       ['cancelled', { path: 'wait', cancel: true, innerError: AbortError }],
-      ['unparseable', { path: 'not-json', cancel: false, innerError: ParseError }],
+      ['unparseable', { path: 'not-json?token=SECRET_QUERY', cancel: false, innerError: ParseError }],
+      ['absolute URL', { path: `${ServerUrl}/logger-json`, cancel: false, innerError: RequestError }],
     ])('%s request errors do not serialize credentials', async (_, { path, cancel, innerError }) => {
       const client = new HttpClient({ prefixUrl: ServerUrl, config: { bearerToken: 'SECRET_BEARER' } });
       const abortController = new AbortController();
@@ -521,7 +526,7 @@ describe('http client', () => {
           ),
       );
 
-      expect(logger.error).toHaveBeenCalled();
+      expect(logger.error.mock.calls[0][0]).toContain('"x-api-key":"<redacted>"');
       expectNoSecrets(JSON.stringify(logger.error.mock.calls));
     });
   });

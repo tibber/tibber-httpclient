@@ -11,10 +11,19 @@ export interface HttpLogger {
   logFailure(error: RequestError): void;
 }
 
-type GotOptions = Pick<
-  OptionsInit,
-  'context' | 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect'
->;
+export const requestOptionKeys = [
+  'method',
+  'headers',
+  'json',
+  'form',
+  'context',
+  'timeout',
+  'retry',
+  'decompress',
+  'followRedirect',
+] as const;
+
+type GotOptions = Partial<Pick<OptionsInit, (typeof requestOptionKeys)[number]>>;
 
 export type RequestOptions = GotOptions & {
   abortSignal?: AbortSignal;
@@ -39,9 +48,9 @@ export interface IHttpClient {
   ): AsyncIterable<Uint8Array>;
 }
 
-/** The cache `CachedClient` stores GET responses in, e.g. a `NodeCache` from `node-cache`. */
+/** The cache `CachedClient` stores GET responses in, e.g. a `NodeCache` from `node-cache`. Expiry is up to the cache. */
 export interface RouteCache {
-  get<T>(route: string): T | undefined;
+  get(route: string): unknown;
   set(route: string, value: unknown): unknown;
 }
 
