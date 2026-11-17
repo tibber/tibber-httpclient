@@ -1,4 +1,4 @@
-import { OptionsInit, RequestError, Response } from 'got/dist/source';
+import { OptionsInit, RequestError, Response } from 'got';
 
 export interface Logger {
   info(...args: unknown[]): void;
@@ -11,10 +11,19 @@ export interface HttpLogger {
   logFailure(error: RequestError): void;
 }
 
-type GotOptions = Pick<
-  OptionsInit,
-  'context' | 'method' | 'timeout' | 'decompress' | 'json' | 'retry' | 'headers' | 'form' | 'followRedirect'
->;
+export const requestOptionKeys = [
+  'method',
+  'headers',
+  'json',
+  'form',
+  'context',
+  'timeout',
+  'retry',
+  'decompress',
+  'followRedirect',
+] as const;
+
+type GotOptions = Partial<Pick<OptionsInit, (typeof requestOptionKeys)[number]>>;
 
 export type RequestOptions = GotOptions & {
   abortSignal?: AbortSignal;
@@ -37,6 +46,12 @@ export interface IHttpClient {
     data?: unknown,
     options?: Omit<RequestOptions, 'json'>,
   ): AsyncIterable<Uint8Array>;
+}
+
+/** The cache `CachedClient` stores GET responses in, e.g. a `NodeCache` from `node-cache`. Expiry is up to the cache. */
+export interface RouteCache {
+  get(route: string): unknown;
+  set(route: string, value: unknown): unknown;
 }
 
 export interface HttpClientConfig {

@@ -3,23 +3,24 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "./dist",
+    "rootDir": ".",
+    "types": ["node", "jest"],
     "sourceMap": true,
     "allowJs": true,
     "strict": true,
     "noUnusedParameters": true,
     "target": "ES2019",
-    "module": "commonjs",
-    "moduleResolution": "node"
+    "module": "node20",
+    "isolatedModules": true
   },
   "include": [
     "./src",
     "./test",
     "./.prettierrc.json",
     "./package.json",
-    "./.eslintrc.json",
+    "./eslint.config.mjs",
     "./renovate.json",
-    "./babel.config.js",
-    "./jest.config.js",
+    "./jest.config.mjs",
     "./jest-setup.js"
   ]
 }

@@ -1,14 +1,10 @@
-import { Options } from 'got';
-import { RequestError, Response } from 'got/dist/source';
-import copy from 'fast-copy';
+import { RequestError, Response } from 'got';
 import { genericLogRedactionKeyPatterns, redactUrl } from './log-redaction';
-import { HttpLogger, Logger, RequestOptions } from './interfaces';
+import { HttpLogger, Logger, RequestOptions, requestOptionKeys } from './interfaces';
 
 export class NoOpLogger implements HttpLogger {
-  // eslint-disable-next-line class-methods-use-this
   logSuccess(_response: Response, _options: RequestOptions): void {}
 
-  // eslint-disable-next-line class-methods-use-this
   logFailure(_error: RequestError): void {}
 }
 
@@ -19,7 +15,7 @@ const tryStringifyJSON = (data: object | undefined | null, onfailureResult?: str
   try {
     return JSON.stringify(data);
   }
-  catch (e) {
+  catch {
     return onfailureResult ?? 'could not serialize logged data';
   }
 }
@@ -36,7 +32,7 @@ export class GenericLogger implements HttpLogger {
 
   logSuccess(response: Response, options: RequestOptions): void {
     const { url, statusCode, timings } = response;
-    const message = `${options.method} ${redactUrl(url)} ${statusCode} ${new Date().getTime() - timings.start} ms`;
+    const message = `${options.method} ${redactUrl(url)} ${statusCode} ${timings ? Date.now() - timings.start : '-'} ms`;
     if (options.method === 'GET') {
       this.#logger.debug(message);
     } else {
@@ -126,9 +122,13 @@ export class PinoLogger implements HttpLogger {
   }
 }
 
+const copyObject = (value: unknown) =>
+  value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : value;
+
 export const redact = (options: RequestOptions) => {
-  const loggable = options instanceof Options ? { ...options.toJSON(), agent: undefined } : options;
-  const clone = copy(loggable) as RequestOptions;
+  const clone = Object.fromEntries(
+    requestOptionKeys.filter((key) => options[key] !== undefined).map((key) => [key, copyObject(options[key])]),
+  ) as RequestOptions;
   redactSensitiveHeaders(clone);
   redactSensitiveProps(clone);
   return clone;
@@ -140,7 +140,6 @@ export const redactSensitiveHeaders = (options: RequestOptions) => {
   for (const prop of Object.keys(options.headers ?? {})) {
     for (const propMatch of genericLogRedactionKeyPatterns.headers) {
       if (!propMatch.test(prop)) continue;
-      // eslint-disable-next-line no-param-reassign
       options.headers[prop] = '<redacted>';
     }
   }

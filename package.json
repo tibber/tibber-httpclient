@@ -1,49 +1,37 @@
 {
   "name": "tibber-httpclient",
-  "version": "5.4.1",
+  "version": "5.5.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "author": "Tibber",
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": ">=22.12.0"
   },
   "license": "MIT",
   "scripts": {
-    "lint": "eslint . --ext .js,.ts,.json",
+    "lint": "eslint .",
     "test": "jest --runInBand",
     "type-check": "tsc --noEmit",
     "type-check:watch": "yarn type-check -- --watch",
     "build": "yarn clean && yarn lint && tsc -p tsconfig.build.json",
     "build:dev": "yarn clean && tsc -p tsconfig.build.json",
     "build:watch": "tsc -p tsconfig.build.json --watch",
-    "clean": "del-cli ./dist"
+    "clean": "rm -rf ./dist"
   },
   "devDependencies": {
-    "@babel/preset-env": "^7.22.9",
-    "@types/express": "^4.17.17",
-    "@types/jest": "^29.5.3",
-    "@types/node": "^20.4.2",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "babel-jest": "^29.6.1",
-    "del-cli": "^5.0.0",
-    "eslint": "^8.44.0",
-    "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-config-airbnb-typescript": "^17.1.0",
-    "eslint-config-prettier": "^8.8.0",
-    "eslint-plugin-import": "^2.27.5",
-    "eslint-plugin-json": "^3.1.0",
-    "jest": "^29.6.1",
-    "jest-each": "^29.6.1",
-    "prettier": "^3.0.0",
-    "ts-jest": "^29.1.1",
-    "ts-node": "^10.3.1",
-    "typescript": "^5.9.3"
+    "@eslint/js": "^10",
+    "@types/jest": "^30",
+    "@types/node": "^22",
+    "eslint": "^10.15.0",
+    "eslint-config-prettier": "^10.1.8",
+    "jest": "^30",
+    "prettier": "^3.10.1",
+    "ts-jest": "^29.4.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.73.0"
   },
   "dependencies": {
     "agentkeepalive": "^4.6.0",
-    "fast-copy": "^3.0.1",
-    "got": "^12.6.0",
-    "node-cache": "^5.1.2"
+    "got": "^16.2.0"
   }
 }
