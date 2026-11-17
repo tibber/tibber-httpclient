@@ -5,8 +5,10 @@ metadata:
   annotations:
     github.com/project-slug: tibber/tibber-httpclient
     circleci.com/project-slug: gh/tibber/tibber-httpclient
+    roadie.io/use-codeowners: "true"
   tags:
   - typescript
 spec:
   type: library
   lifecycle: production
+  owner: codeowners
