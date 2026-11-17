@@ -16,6 +16,7 @@ Since 5.4, the pooled connection lifetime is configurable with `pooledConnection
 Since 5.5, this library uses `got` 16 and requires Node.js `>=22.12.0`:
 - `raw()` responses carry `rawBody`, and `body` with `responseType: 'buffer'`, as a `Uint8Array` instead of a `Buffer`. Wrap it in `Buffer.from()` before calling `toString()`.
 - A request cancelled through `abortSignal` fails with a `RequestException` whose `innerError` is got's `AbortError` and whose `statusCode` is `ERR_ABORTED` (previously `CancelError` and `ERR_CANCELED`). An `AbortSignal.timeout()` signal gives got's `TimeoutError` and no `statusCode`.
+- `body`, `json` and `form` set in the client's `options` are no longer sent with each request; pass them per request.
 - A client with a `prefixUrl` rejects absolute URLs, unless created with `options: { allowAbsoluteUrls: true }`.
 - `CachedClient` takes any cache with `get` and `set` (`RouteCache`); `node-cache` is no longer a dependency of this library.
 - TypeScript consumers need `moduleResolution` `node16`, `nodenext` or `bundler`, otherwise got's types resolve to `any`.
