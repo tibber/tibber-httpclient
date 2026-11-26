@@ -1,10 +1,17 @@
 {
-  "name": "tibber-httpclient",
+  "name": "@tibber/tibber-httpclient",
   "version": "4.3.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "author": "Tibber",
-  "license": "MIT",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tibber/tibber-httpclient.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "scripts": {
     "lint": "eslint . --ext .js,.ts,.json",
     "test": "jest --runInBand",
