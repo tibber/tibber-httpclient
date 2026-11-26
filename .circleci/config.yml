@@ -42,11 +42,11 @@ jobs:
       - run:
           name: Deploy Package
           command: |
+            echo "//npm.pkg.github.com/:_authToken=$GITHUB_AUTH_TOKEN" > ~/.npmrc
+            NAME=$(node -p "require('./package.json').name")
             V=$(node -p "require('./package.json').version")
-            if npm view "tibber-httpclient@$V" version >/dev/null 2>&1; then
-              echo "tibber-httpclient@$V already published, skipping"
+            if npm view "$NAME@$V" version --registry https://npm.pkg.github.com/ >/dev/null 2>&1; then
+              echo "$NAME@$V already published, skipping"
               exit 0
             fi
-            NPM_ID_TOKEN=$(circleci run oidc get --claims '{"aud": "npm:registry.npmjs.org"}')
-            export NPM_ID_TOKEN
             npm publish

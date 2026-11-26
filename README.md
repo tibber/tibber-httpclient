@@ -5,6 +5,26 @@
 
 Http client that is based upon `got` library.
 
+## Installing
+
+The package is published to GitHub Packages as `@tibber/tibber-httpclient`. Versions up to 5.4.1 were also published to npmjs as `tibber-httpclient`; npmjs gets no new versions.
+
+Point the `@tibber` scope at GitHub Packages in the consuming repo's `.npmrc`:
+
+```
+@tibber:registry=https://npm.pkg.github.com
+```
+
+Installing needs a token that can read the org's packages. CircleCI appends it before `yarn install` (`echo "//npm.pkg.github.com/:_authToken=$GITHUB_READONLY_PACKAGES" >> .npmrc`), and Docker builds get it as a build secret, as in `service-template`.
+
+To move off the npmjs package without touching imports, install it under the old name with an alias:
+
+```json
+"tibber-httpclient": "npm:@tibber/tibber-httpclient@^5"
+```
+
+New code can depend on `@tibber/tibber-httpclient` directly and import from it.
+
 The v1 version of this library used the deprecated `request-promise` library.
 
 The v2 version was updated to use the more actively developed `got` under the hood instead.
@@ -39,7 +59,7 @@ Example of an ExpressJS service using this library + Pino:
 // logger-middleware.ts
 import pino from 'pino';
 import { pinoHttp } from 'pino-http';
-import { serializers } from 'tibber-httpclient';
+import { serializers } from '@tibber/tibber-httpclient';
 //       ^^^^^^^^^^^
 
 export const requestContextLoggerMiddleware = (req, res, next) => {
@@ -71,7 +91,7 @@ Example of an ExpressJS service using this library + Pino:
 ```ts
 // logger-middleware.ts
 import { pinoHttp } from 'pino-http';
-import { pinoLogRedactionKeyPaths } from 'tibber-httpclient';
+import { pinoLogRedactionKeyPaths } from '@tibber/tibber-httpclient';
 //       ^^^^^^^^^^^^^^^^^^^^^^^^
 
 export const requestContextLoggerMiddleware = (req, res, next) => {
