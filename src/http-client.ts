@@ -31,10 +31,26 @@ const hideSensitiveErrorProps = (error: RequestError) => {
   }
 };
 
+/**
+ * The message must be safe to show to an API client: got's HTTPError message is only the status
+ * ("Response code 500 (Internal Server Error)"), but connection errors name the host and port
+ * ("getaddrinfo ENOTFOUND svc.ns.svc.cluster.local"), so those keep only their code.
+ */
+const errorMessage = (error: Error) => {
+  if (error instanceof HTTPError || !(error instanceof RequestError)) return error.message;
+  return `Request failed${error.code ? ` (${error.code})` : ''}`;
+};
+
+/** Keep the upstream URL where loggers and APM look (the stack), but not in `message`. */
+const stackWithUrl = (error: Error, url: string) => `${error.stack ?? error.message}\n    at upstream ${url}`;
+
 export class RequestException extends Error {
   readonly statusCode;
 
   readonly stack;
+
+  /** Upstream URL (redacted). Not part of `message` and not serialized, so it never reaches API clients. */
+  readonly url?: string;
 
   readonly innerError;
 
@@ -46,18 +62,26 @@ export class RequestException extends Error {
     innerError,
     stack,
     responseBody,
+    url,
   }: {
     message: string;
     statusCode?: string | number;
     innerError: Error;
     stack?: string;
     responseBody?: unknown;
+    url?: string;
   }) {
     super(message);
     this.statusCode = statusCode;
     this.stack = stack;
     this.innerError = innerError;
     this.responseBody = responseBody;
+    this.url = url;
+    // Callers often forward an error as-is (`res.json(err)`, GraphQL error messages), so upstream
+    // details stay readable in code and logs but out of the serialized error.
+    for (const prop of ['url', 'innerError', 'responseBody']) {
+      Object.defineProperty(this, prop, { enumerable: false });
+    }
   }
 }
 
@@ -68,6 +92,7 @@ export type ProblemDetailsArgs = {
   title: string;
   type: string;
   innerError: Error;
+  url?: string;
   extensions: {
     [k: string]: unknown;
   };
@@ -87,9 +112,15 @@ export class ProblemDetailsError extends RequestException {
   };
 
   constructor(args: ProblemDetailsArgs) {
-    const { detail, instance, statusCode, title, type, innerError, extensions } = args;
+    const { detail, instance, statusCode, title, type, innerError, extensions, url } = args;
 
-    super({ stack: innerError.stack, message: innerError.message, innerError, statusCode });
+    super({
+      stack: url ? stackWithUrl(innerError, url) : innerError.stack,
+      message: errorMessage(innerError),
+      innerError,
+      statusCode,
+      url,
+    });
 
     this.detail = detail;
     this.type = type;
@@ -234,13 +265,13 @@ export class HttpClient implements IHttpClient {
         try {
           const responseBody = JSON.parse(error.response.body);
           if (contentType.includes('application/json')) {
-            const { message, stack } = error;
             return new RequestException({
-              message: `${url} ${message}`,
+              message: errorMessage(error),
               statusCode: code,
               innerError: error,
               responseBody,
-              stack,
+              stack: stackWithUrl(error, url),
+              url,
             });
           }
           const { detail, instance, title, type, ...extensions } = responseBody as {
@@ -256,6 +287,7 @@ export class HttpClient implements IHttpClient {
               extensions: extensions ?? {},
               statusCode: code,
               innerError: error,
+              url,
             });
           }
         } catch (_parsingError) {
@@ -265,12 +297,12 @@ export class HttpClient implements IHttpClient {
     }
 
     if (error instanceof Error) {
-      const { message, stack } = error;
       return new RequestException({
-        message: `${url} ${message}`,
+        message: errorMessage(error),
         statusCode: code,
         innerError: error,
-        stack,
+        stack: stackWithUrl(error, url),
+        url,
       });
     }
 

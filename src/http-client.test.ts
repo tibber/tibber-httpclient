@@ -32,6 +32,11 @@ describe('http client', () => {
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ reason: 'bad' }));
           break;
+        case '/problem':
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/problem+json');
+          res.end(JSON.stringify({ type: 'about:blank', title: 'Unexpected error', detail: 'db down' }));
+          break;
         case '/wait':
           setTimeout(() => {
             res.statusCode = 200;
@@ -434,6 +439,46 @@ describe('http client', () => {
     });
   });
 
+  describe('error messages safe for API clients', () => {
+    test.each([
+      ['json error', '400?homeId=abc', 400],
+      ['problem details', 'problem', 500],
+    ])('%s: message has no URL, URL is kept for logs', async (_, path, statusCode) => {
+      const client = new HttpClient({ prefixUrl: ServerUrl });
+
+      const error = await getError<RequestException>(async () => await client.get(path));
+
+      expect(error).toBeInstanceOf(RequestException);
+      expect(error.statusCode).toBe(statusCode);
+      expect(error.message).toMatch(/^Response code \d{3} /);
+      expect(error.message).not.toContain('localhost');
+      expect(error.url).toBe(`${ServerUrl}/${path}`);
+      expect(error.stack).toContain(`at upstream ${ServerUrl}/${path}`);
+    });
+
+    test('serialized error has no URL, upstream body or inner error', async () => {
+      const client = new HttpClient({ prefixUrl: ServerUrl });
+
+      const error = await getError<RequestException>(async () => await client.get('400'));
+      const json = JSON.parse(JSON.stringify(error));
+
+      expect(json).toEqual({ statusCode: 400 });
+      expect(error.responseBody).toEqual({ reason: 'bad' });
+      expect(error.innerError).toBeInstanceOf(HTTPError);
+    });
+
+    test('connection errors do not name the host or port', async () => {
+      const client = new HttpClient({ prefixUrl: 'http://127.0.0.1:1', options: { retry: { limit: 0 } } });
+
+      const error = await getError<RequestException>(async () => await client.get('anything'));
+
+      expect(error).toBeInstanceOf(RequestException);
+      expect(error.message).toBe('Request failed (ECONNREFUSED)');
+      expect(error.url).toBe('http://127.0.0.1:1/anything');
+      expect(error.innerError.message).toContain('127.0.0.1:1');
+    });
+  });
+
   describe('secret redaction', () => {
     const secrets = [
       'SECRET_PASSWORD',
@@ -469,7 +514,7 @@ describe('http client', () => {
       );
 
       expect(error).toBeInstanceOf(RequestException);
-      expect(error.message).toContain('token=<redacted>');
+      expect(error.url).toContain('token=<redacted>');
       serializations(error).forEach(expectNoSecrets);
       // still reachable for programmatic access
       expect((error.innerError as HTTPError).options.headers.authorization).toBeDefined();
